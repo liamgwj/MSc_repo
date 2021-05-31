@@ -1,5 +1,5 @@
 ---
-title: "analysis"
+title: "Simulate phylogeny and geographic distribution of host plants"
 author: "Liam Johnson"
 date: "10/05/2021"
 output: html_document
@@ -23,7 +23,7 @@ library(raster)
 library(castor)
 ```
 
-## simulate host phylogeny
+## Simulate host phylogeny
 ```{r}
 n <- 10
 numbsim <- 1
@@ -33,20 +33,20 @@ mu <- 0
 phy <- sim.bd.taxa(n, numbsim, lambda, mu, frac = 1, complete = TRUE, stochsampling = FALSE)
 ```
 
-## simulate trait evolution
+## Simulate trait evolution
 ```{r}
 q <- list(rbind(c(-.5, .5), c(.5, -.5)))
 
 compatible <- sim.char(phy[[1]], q, model="discrete", nsim=1)
 ```
 
-## plot tree
+## Plot phylogeny
 ```{r}
-plot(phy[[1]], tip.color=compatible)
+plot(phy[[1]], tip.color=compatible) #compatible tips in red
 ```
 
 
-## simulate tip geographic distributions
+## Simulate tip geographic distributions
 ```{r}
 occurrence <- vector("list", length=length(phy[[1]]$tip.label))
 
@@ -60,7 +60,7 @@ for(i in 1:length(occurrence)){
 }
 ```
 
-## plot distributions
+## Plot distributions
 ```{r fig.width=6, fig.height=12}
 par(mfrow=c(5,2))
 for(i in 1:length(occurrence)){
