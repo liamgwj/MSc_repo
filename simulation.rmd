@@ -1,0 +1,157 @@
+---
+title: "analysis"
+author: "Liam Johnson"
+date: "10/05/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Setup
+```{r message=FALSE}
+rm(list=ls())
+
+library(ape)
+library(geiger)
+library(TreeSim)
+
+library(landscapeR)
+library(raster)
+
+library(castor)
+```
+
+## simulate host phylogeny
+```{r}
+n <- 10
+numbsim <- 1
+lambda <- 0.1
+mu <- 0
+
+phy <- sim.bd.taxa(n, numbsim, lambda, mu, frac = 1, complete = TRUE, stochsampling = FALSE)
+```
+
+## simulate trait evolution
+```{r}
+q <- list(rbind(c(-.5, .5), c(.5, -.5)))
+
+compatible <- sim.char(phy[[1]], q, model="discrete", nsim=1)
+```
+
+## plot tree
+```{r}
+plot(phy[[1]], tip.color=compatible)
+```
+
+
+## simulate tip geographic distributions
+```{r}
+occurrence <- vector("list", length=length(phy[[1]]$tip.label))
+
+m <- matrix(0, 33, 33)
+r <- raster(m, xmn=0, xmx=10, ymn=0, ymx=10)
+
+for(i in 1:length(occurrence)){
+    np <- sample(1:50, 1)
+    sz <- sample(5:20, 1)
+    occurrence[[i]] <- makeClass(r, npatch=np, size=sz)
+}
+```
+
+## plot distributions
+```{r fig.width=6, fig.height=12}
+par(mfrow=c(5,2))
+for(i in 1:length(occurrence)){
+plot(occurrence[[i]])
+}
+```
+
+
+## Calculate and plot available habitat
+```{r fig.width=6, fig.height=6}
+hosts <- which(compatible==2)
+
+host_occurrence <- occurrence[hosts]
+
+host_sum <- host_occurrence[[1]]
+
+for(i in 2:length(host_occurrence)){
+host_sum <- host_sum + host_occurrence[[i]]
+}
+
+plot(host_sum)
+```
+
+
+## Drop some hosts
+```{r}
+known_hosts <- sample(hosts, round(2*length(hosts)/3, 0))
+```
+
+
+## Recalculate and plot available habitat
+```{r fig.width=6, fig.height=6}
+known_host_occurrence <- occurrence[known_hosts]
+
+known_host_sum <- known_host_occurrence[[1]]
+
+for(i in 2:length(known_host_occurrence)){
+known_host_sum <- known_host_sum + known_host_occurrence[[i]]
+}
+
+plot(known_host_sum)
+```
+
+
+## Plot known hosts on phylogeny
+```{r}
+known_compatible <- compatible
+known_compatible[setdiff(hosts, known_hosts)] <- 1
+
+plot(phy[[1]], tip.color=known_compatible)
+```
+
+## Identify phylogenetic distances separating each tip from nearest known host
+```{r}
+# get all pairwise distances
+dist <- get_all_pairwise_distances(phy[[1]], only_clades=phy[[1]]$tip.label)
+
+# remove duplicate distances (since a-b and b-a are equivalent) and convert to data.frame
+dist2 <- matrix(dist, ncol = length(phy[[1]]$tip.label), dimnames = list(phy[[1]]$tip.label, phy[[1]]$tip.label))
+
+dist2[col(dist2) == row(dist2) | upper.tri(dist2)] <- NA
+
+sp <- subset(as.data.frame.table(dist2), !is.na(Freq)) 
+
+names(sp) <- c("sp2", "sp1", "dist")
+
+# lists of hosts
+host_names <- phy[[1]]$tip.label[known_hosts]
+
+# set up data frame
+out <- data.frame(tip = phy[[1]]$tip.label)
+out$minDist <- NA
+
+# fill with distances
+for(i in 1:length(phy[[1]]$tip.label)){
+    
+dists <- sp[which(sp$sp1==phy[[1]]$tip.label[i]|sp$sp2==phy[[1]]$tip.label[i]),]
+
+dh <- dists[which(dists$sp1%in%host_names&!dists$sp1==phy[[1]]$tip.label[i]|dists$sp2%in%host_names&!dists$sp2==phy[[1]]$tip.label[i]),]
+
+out$minDist[i] <- min(dh$dist)
+}
+
+out[order(out$minDist),]
+```
+
+
+## Calculate mean pairwise distance among known hosts
+```{r}
+
+```
+
+
+
