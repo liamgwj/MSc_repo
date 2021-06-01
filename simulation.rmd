@@ -1,7 +1,7 @@
 ---
 title: "Simulate phylogeny and geographic distribution of host plants"
 author: "Liam Johnson"
-date: "10/05/2021"
+date: "2021-05-10"
 output: html_document
 ---
 
@@ -9,12 +9,9 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-Changing a line to test PAT setup
 
-### Setup
+### Load packages
 ```{r message=FALSE}
-rm(list=ls())
-
 library(ape)
 library(geiger)
 library(TreeSim)
@@ -23,17 +20,32 @@ library(landscapeR)
 library(raster)
 
 library(castor)
+
+library(samc)
 ```
+
+
+### Session information
+```{r get_info}
+sessionInfo()
+```
+
 
 ## Simulate host phylogeny
-```{r}
-n <- 10
-numbsim <- 1
-lambda <- 0.1
-mu <- 0
 
+Specify the parameters for the simulation
+```{r}
+n <- 10 # number of tips on each simulated phylogeny
+numbsim <- 1 # number of phylogenies to simulate
+lambda <- 0.1 # speciation rate
+mu <- 0 # extinction rate
+```
+
+Simulate the phylogeny
+```{r}
 phy <- sim.bd.taxa(n, numbsim, lambda, mu, frac = 1, complete = TRUE, stochsampling = FALSE)
 ```
+
 
 ## Simulate trait evolution
 ```{r}
@@ -49,7 +61,7 @@ plot(phy[[1]], tip.color=compatible) #compatible tips in red
 
 
 ## Simulate tip geographic distributions
-```{r}
+```{r warning=FALSE}
 occurrence <- vector("list", length=length(phy[[1]]$tip.label))
 
 m <- matrix(0, 33, 33)
