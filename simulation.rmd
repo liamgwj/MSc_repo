@@ -9,8 +9,16 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+# Background
 
-### Load packages
+
+# Resources
+
+The code presented here was informed by the following online resources:
+
+# Setup
+
+## Load packages
 ```{r message=FALSE}
 library(ape)
 library(geiger)
@@ -25,16 +33,20 @@ library(samc)
 ```
 
 
-### Session information
-```{r get_info}
+## Session information
+
+Inserted `eval = F` into chunk header.. this can be changed to T when needed. 
+
+```{r get_info, eval = F}
 sessionInfo()
 ```
 
+# Methods: input data
 
 ## Simulate host phylogeny
 
 Specify the parameters for the simulation
-```{r}
+```{r define_params}
 ntips <- 20 # number of tips on each simulated phylogeny
 numbsim <- 1 # number of phylogenies to simulate
 lambda <- 0.1 # speciation rate
@@ -42,7 +54,7 @@ mu <- 0 # extinction rate
 ```
 
 Simulate the phylogeny (output is a list, in this case containing only one phylogeny)
-```{r}
+```{r sim_phylo}
 phy <- sim.bd.taxa(ntips, numbsim, lambda, mu, frac = 1, complete = TRUE, stochsampling = FALSE)
 ```
 
@@ -52,18 +64,18 @@ phy <- sim.bd.taxa(ntips, numbsim, lambda, mu, frac = 1, complete = TRUE, stochs
 This function takes a phylogeny as input, and simulates the evolution of a trait on the phylogeny
 
 Specify simulation parameters
-```{r}
+```{r phylo_params}
 q <- list(rbind(c(-.03, .03), c(.03, -.03))) # transition matrix
 ```
 
 Simulate character evolution
-```{r}
-compatible <- sim.char(phy[[1]], q, model="discrete", nsim=1)
+```{r sim_char_evol}
+compatible <- sim.char(phy[[1]], q, model="discrete", nsim = 1)
 ```
 
 
 Plot the simulated phylogeny with character states shown in colour
-```{r fig.width=6, fig.height=8}
+```{r plot_phylo1, fig.width = 6, fig.height = 8}
 plot(phy[[1]], tip.color=compatible)
 ```
 
@@ -71,8 +83,8 @@ plot(phy[[1]], tip.color=compatible)
 We will consider tips with character state '2' (shown in red) to be compatible hosts, while tips with state '1' (in black) are not compatible.
 
 Identify host names and indexes to use later
-```{r}
-host_indexes <- which(compatible==2)
+```{r host_info}
+host_indexes <- which(compatible == 2)
 
 host_names <- rownames(compatible)[host_indexes]
 ```
@@ -82,24 +94,24 @@ host_names <- rownames(compatible)[host_indexes]
 
 For every tip on the phylogeny, we will simulate a raster map representing the species' presence/absence in cells covering a hypothetical geographic area
 
-```{r}
-occurrence <- vector("list", length=length(phy[[1]]$tip.label)) # create a list to hold the rasters
+```{r create_presabs_rasters}
+occurrence <- vector("list", length = length(phy[[1]]$tip.label)) # create a list to hold the rasters
 names(occurrence) <- phy[[1]]$tip.label # assign each item a tip name
 
-empty_raster <- raster(matrix(0, 100, 100), xmn=0, xmx=10, ymn=0, ymx=10) # create an empty raster to fill with presence/absence for each species (reused)
+empty_raster <- raster(matrix(0, 100, 100), xmn = 0, xmx = 10, ymn = 0, ymx = 10) # create an empty raster to fill with presence/absence for each species (reused)
 ```
 
 Loop to simulate occurrence for each tip. Number of patches and patch size are sampled randomly for each species from the ranges specified, and warnings are disabled to avoid messages generated when patches overlap.
-```{r warning=FALSE}
+```{r sim_species_dist, warning = FALSE}
 for(i in 1:length(occurrence)){
     np <- sample(1:10, 1) # number of patches
     sz <- sample(10:250, 1) # size of each patch
-    occurrence[[i]] <- makeClass(empty_raster, npatch=np, size=sz)
+    occurrence[[i]] <- makeClass(empty_raster, npatch = np, size = sz)
 }
 ```
 
 Plot the distribution map generated for each tip. Compatible hosts are labeled in red.
-```{r fig.width=6, fig.height=14}
+```{r fig.width = 6, fig.height = 14}
 par(mfrow=c(5,2))
 for(i in 1:length(occurrence)){
     title_colour <- "black"
@@ -113,7 +125,8 @@ for(i in 1:length(occurrence)){
 ## Calculate available habitat when all compatible hosts are considered
 
 For now, we'll consider cell suitability to be equivalent to the number of compatible hosts present in each cell, calculated by summing the host rasters.
-```{r}
+
+```{r calc_hab_suitability}
 host_occurrence <- occurrence[host_indexes] # select only compatible host rasters
 
 host_sum <- empty_raster # initiate the summed map
@@ -124,19 +137,21 @@ host_sum <- host_sum + host_occurrence[[i]] # add the remaining host rasters
 ```
 
 Plot the summed raster - cell values are the number of compatible hosts present
-```{r fig.width=6, fig.height=5.5}
+```{r plot_habitat_suit, fig.width = 6, fig.height = 5.5}
 plot(host_sum)
 ```
 
 
 This map can now be used to measure "true" habitat values (connectivity etc.)
 
+# Methods: calculating connectivity
 
-## Measure true connectivity... 
+
+## Measure true connectivity 
 
 
 Generate absorption raster - for now, we'll have uniform minimal absorption
-```{r fig.width=6, fig.height=5.5}
+```{r absorb_raster, fig.width = 6, fig.height = 5.5}
 absorp <- raster(matrix(0.005, 100, 100), xmn=0, xmx=10, ymn=0, ymx=10)
 
 plot(absorp)
@@ -144,15 +159,15 @@ plot(absorp)
 
 
 generate resistance raster
-```{r fig.width=6, fig.height=5.5}
-resist <- raster(matrix(length(host_names)+1, 100, 100), xmn=0, xmx=10, ymn=0, ymx=10) - host_sum
+```{r resist_raster, fig.width = 6, fig.height = 5.5}
+resist <- raster(matrix(length(host_names) + 1, 100, 100), xmn = 0, xmx = 10, ymn = 0, ymx = 10) - host_sum
 
 plot(resist)
 ```
 
 
 create samc object to feed into analysis calculations
-```{r}
+```{r create_samc}
 samc_obj <- samc(
               resistance = resist,
               absorption = absorp,
@@ -166,7 +181,7 @@ str(samc_obj)
 ```
 
 
-```{r fig.width=6, fig.height=5.5}
+```{r prob_occurence, fig.width = 6, fig.height = 5.5}
 # Convert the occupancy data to probability of occurrence
 occ_prob_data <- 1 - 1/(host_sum+1)
 
@@ -175,27 +190,27 @@ plot(occ_prob_data)
 
 
 calculate long term dispersal
-```{r}
+```{r long_dispersal}
 long_disp <- dispersal(samc_obj, occ_prob_data)
 ```
 
 
 plot long term dispersal
-```{r fig.width=6, fig.height=5.5}
+```{r plot_long_dispersal, fig.width = 6, fig.height = 5.5}
 long_disp_map <- map(samc_obj, long_disp)
-
 
 plot(long_disp_map)
 ```
 
 
+## Predict connectivity with incomplete host info
 
-###############################################################################
+
 The following sections eliminate some hosts from the calculated habitat, use the phylogeny to predict potential hosts, then recalculate connectivity.
-###############################################################################
 
 
-## Drop some hosts
+### Eliminate some known hosts
+
 ```{r}
 known_host_indexes <- sample(host_indexes, round(length(host_indexes)/2, 0)) # keep roughly 1/2 of true hosts
 
@@ -203,7 +218,8 @@ known_host_names <- rownames(compatible)[known_host_indexes]
 ```
 
 
-## Recalculate available habitat using reduced host list
+### Recalculate estimated available habitat
+
 ```{r}
 known_host_occurrence <- occurrence[known_host_indexes]
 
@@ -219,11 +235,14 @@ Plot the summed raster
 plot(known_host_sum)
 ```
 
-
 The maximum value is reduced, but the colour gradient spans the same range - this makes the maps harder to compare and should be fixed
 
+* See this [stackexchange](https://stackoverflow.com/questions/36671499/color-ramp-with-the-same-colour-scale-across-different-plots-in-r)
 
-## Replot the phylogeny with non-host tips in black, "known" hosts in red and "unknown" hosts in blue
+### Revisit phylogeny 
+
+Replot the phylogeny with non-host tips in black, "known" hosts in red and "unknown" hosts in blue
+
 ```{r fig.width=6, fig.height=8}
 tip_cols <- compatible
 tip_cols[setdiff(host_indexes, known_host_indexes)] <- 4
@@ -231,7 +250,8 @@ tip_cols[setdiff(host_indexes, known_host_indexes)] <- 4
 plot(phy[[1]], tip.color=tip_cols)
 ```
 
-## Identify phylogenetic distances separating each tip from nearest known host
+### Calculate phylogenetic distances separating each tip from nearest known host
+
 ```{r}
 # get all pairwise distances
 dist <- get_all_pairwise_distances(phy[[1]], only_clades=phy[[1]]$tip.label)
@@ -265,7 +285,8 @@ out$minDist[i] <- min(dh$dist)
 out[order(out$minDist),]
 ```
 
-[This is not a good phylogenetic prediction method - alter to allow adding potential hosts sequentially according to their PD from known hosts]
+> This is not a good phylogenetic prediction method - alter to allow adding potential hosts sequentially according to their PD from known hosts
+
 Calculate mean nearest host distance among known hosts
 ```{r}
 host_ntd <- mean(out$minDist[known_host_indexes])
@@ -278,7 +299,7 @@ potential_host_indexes <- as.numeric(rownames(out[which(out$minDist<=host_ntd & 
 
 
 Replot the phylogeny with non-host tips in black, "known" hosts in red, "unknown" hosts in blue, "unknown" hosts that are considered potential hosts in yellow, and non-hosts that are considered potential hosts in pink
-```{r fig.width=6, fig.height=8}
+```{r fig.width = 6, fig.height = 8}
 tip_cols2 <- tip_cols
 
 tip_cols2[setdiff(potential_host_indexes, host_indexes)] <- 6
@@ -289,7 +310,8 @@ plot(phy[[1]], tip.color=tip_cols2)
 ```
 
 
-## Recalculate available habitat including potential hosts
+### Recalculate available habitat including potential hosts
+
 ```{r}
 potential_host_occurrence <- occurrence[c(potential_host_indexes, known_host_indexes)]
 
