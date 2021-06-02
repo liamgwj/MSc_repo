@@ -277,12 +277,15 @@ potential_host_indexes <- as.numeric(rownames(out[which(out$minDist<=host_ntd & 
 ```
 
 
-## Replot the phylogeny with non-host tips in black, "known" hosts in red and "unknown" hosts in blue... [add other categories...]
+Replot the phylogeny with non-host tips in black, "known" hosts in red, "unknown" hosts in blue, "unknown" hosts that are considered potential hosts in yellow, and non-hosts that are considered potential hosts in pink
 ```{r fig.width=6, fig.height=8}
-#tip_cols2 <- tip_cols
-#tip_cols2[setdiff(host_indexes, known_host_indexes)] <- 4
-#
-#plot(phy[[1]], tip.color=tip_cols2)
+tip_cols2 <- tip_cols
+
+tip_cols2[setdiff(potential_host_indexes, host_indexes)] <- 6
+
+tip_cols2[intersect(potential_host_indexes, host_indexes)] <- 7
+
+plot(phy[[1]], tip.color=tip_cols2)
 ```
 
 
