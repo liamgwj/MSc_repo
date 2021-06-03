@@ -12,8 +12,8 @@ knitr::opts_chunk$set(echo = TRUE)
 # Background
 
 
-# Resources
 
+# Resources
 The code presented here was informed by the following online resources:
 
 
@@ -31,15 +31,17 @@ library(raster)
 library(rasterVis)
 library(ggplot2)
 library(gridExtra)
+library(viridis)
 library(samc)
 ```
 
 
 ## Session information
-
 ```{r get_info, eval = F}
 sessionInfo()
 ```
+
+
 
 # Methods: input data
 
@@ -73,9 +75,8 @@ Simulate character evolution
 compatible <- sim.char(phy[[1]], q, model="discrete", nsim = 1)
 ```
 
-
 Plot the simulated phylogeny with character states shown in colour
-```{r plot_phylo1, fig.width = 6, fig.height = 8}
+```{r plot_phylo1, fig.width = 6, fig.height = 6}
 plot(phy[[1]], tip.color=compatible)
 ```
 
@@ -92,7 +93,7 @@ host_names <- rownames(compatible)[host_indexes]
 
 ## Simulate tip geographic distributions
 
-For every tip on the phylogeny, we will simulate a raster map representing the species' presence/absence in cells covering a hypothetical geographic area
+For every tip on the phylogeny, simulate a raster map representing the species' presence/absence in cells covering a hypothetical geographic area
 
 Create empty rasters for all species
 ```{r create_species_rasters}
@@ -123,128 +124,30 @@ for(i in 1:length(occurrence)){
 ```
 
 
-## Calculate available habitat when all compatible hosts are considered
+## Simulate incomplete host information
 
-For now, we'll consider cell suitability to be equivalent to the number of compatible hosts present in each cell, calculated by summing the host rasters.
-
-```{r calc_hab_suitability}
-host_occurrence <- occurrence[host_indexes] # select only compatible host rasters
-
-host_sum <- empty_raster # initiate the summed map
-
-for(i in 1:length(host_occurrence)){
-host_sum <- host_sum + host_occurrence[[i]] # add the remaining host rasters
-}
-```
-
-
-This can now be used to measure "true" habitat values (connectivity etc.)
-
-
-# Methods: calculating connectivity
-
-
-## Measure true connectivity 
-
-
-Define connectivity calculation function (will be reused)
-> I imagine this will have to be edited to return the intermediate objects as well... as it stands, works for visual comparisons
-
-```{r long_disp_fun}
-disp_fun <- function(max_resistance, absorp_raster, host_raster){
-
-    # generate resistance raster
-resist <- raster(matrix(max_resistance, 100, 100), xmn = 0, xmx = 10, ymn = 0, ymx = 10) - host_raster
-
-    # create samc object to feed into analysis calculations
-samc_obj <- samc(
-              resistance = resist,
-              absorption = absorp_raster,
-              latlon = FALSE,
-              tr_fun = function(x) 1/mean(x),
-              override = FALSE,
-              directions = 8
-)
-
-    # Convert the occupancy data to probability of occurrence
-occ_prob <- 1 - 1 / (host_raster + 1)
-
-    # calculate long term dispersal
-long_disp <- dispersal(samc_obj, occ_prob)
-
-    # map long-term dispersal
-long_disp_map <- map(samc_obj, long_disp)
-
-return(long_disp_map)
-}
-```
-
-
-Generate absorption raster - for now, we'll have uniform minimal absorption
-```{r absorb_raster, fig.width = 6, fig.height = 5.5}
-absorp <- raster(matrix(0.005, 100, 100), xmn=0, xmx=10, ymn=0, ymx=10)
-```
-
-
-Calculate connectivity
-```{r long_disp_calc}
-long_disp_map_true <- disp_fun(max_resistance = length(phy[[1]]$tip.label) + 1,
-                                absorp_raster = absorp,
-                                host_raster = host_sum)
-```
-
-
-## Predict connectivity with incomplete host info
-
-
-The following sections eliminate some hosts from the calculated habitat, use the phylogeny to predict potential hosts, then recalculate connectivity.
-
-
-### Eliminate some known hosts
-
+Eliminate some known hosts
 ```{r}
 known_host_indexes <- sample(host_indexes, round(length(host_indexes)/2, 0)) # keep roughly 1/2 of true hosts
 
 known_host_names <- rownames(compatible)[known_host_indexes]
 ```
 
-
-### Recalculate estimated available habitat
-
-```{r}
-known_host_occurrence <- occurrence[known_host_indexes]
-
-known_host_sum <- empty_raster # initiate
-
-for(i in 1:length(known_host_occurrence)){
-known_host_sum <- known_host_sum + known_host_occurrence[[i]]
-}
-```
-
-
-### Recalculate connectivity
-
-Calculate connectivity
-```{r long_disp_calc}
-long_disp_map_known <- disp_fun(max_resistance = length(phy[[1]]$tip.label) + 1,
-                                absorp_raster = absorp,
-                                host_raster = known_host_sum)
-```
-
-
-### Revisit phylogeny 
-
 Replot the phylogeny with non-host tips in black, "known" hosts in red and "unknown" hosts in blue
-
-```{r fig.width=6, fig.height=8}
+```{r fig.width=6, fig.height=6}
 tip_cols <- compatible
 tip_cols[setdiff(host_indexes, known_host_indexes)] <- 4
 
 plot(phy[[1]], tip.color=tip_cols)
 ```
 
-### Calculate phylogenetic distances separating each tip from nearest known host
 
+
+# Methods: phylogenetic prediction
+
+> This is not a good phylogenetic prediction method - alter to allow adding potential hosts sequentially according to their PD from known hosts
+
+Calculate phylogenetic distances separating each tip from nearest known host
 ```{r}
 # get all pairwise distances
 dist <- get_all_pairwise_distances(phy[[1]], only_clades=phy[[1]]$tip.label)
@@ -278,8 +181,6 @@ out$minDist[i] <- min(dh$dist)
 out[order(out$minDist),]
 ```
 
-> This is not a good phylogenetic prediction method - alter to allow adding potential hosts sequentially according to their PD from known hosts
-
 Calculate mean nearest host distance among known hosts
 ```{r}
 host_ntd <- mean(out$minDist[known_host_indexes])
@@ -290,9 +191,8 @@ Identify non-known host tips within mean host ntd
 potential_host_indexes <- as.numeric(rownames(out[which(out$minDist<=host_ntd & !out$tip%in%known_host_names),]))
 ```
 
-
-Replot the phylogeny with non-host tips in black, "known" hosts in red, "unknown" hosts in blue, "unknown" hosts that are considered potential hosts in yellow, and non-hosts that are considered potential hosts in pink
-```{r fig.width = 6, fig.height = 8}
+Replot the phylogeny with non-host tips in black, known hosts in red, unknown hosts in blue, unknown hosts that are considered potential hosts in yellow, and non-hosts that are considered potential hosts in pink
+```{r fig.width = 6, fig.height = 6}
 tip_cols2 <- tip_cols
 
 tip_cols2[setdiff(potential_host_indexes, host_indexes)] <- 6
@@ -303,8 +203,93 @@ plot(phy[[1]], tip.color=tip_cols2)
 ```
 
 
-### Recalculate available habitat including potential hosts
 
+# Methods: calculate connectivity
+
+## Calculate available habitat and connectivity when all compatible hosts are considered
+
+For now, we'll consider cell suitability to be equivalent to the number of compatible hosts present in each cell, calculated by summing the host rasters.
+
+Calculate habitat suitability (true hosts)
+```{r calc_hab_suitability}
+host_occurrence <- occurrence[host_indexes] # select only compatible host rasters
+
+host_sum <- empty_raster # initiate the summed map
+
+for(i in 1:length(host_occurrence)){
+host_sum <- host_sum + host_occurrence[[i]] # add the remaining host rasters
+}
+```
+
+Define connectivity calculation function (will be reused)
+> I imagine this will have to be edited to return the intermediate objects as well... works for visual comparisons as it stands
+
+```{r disp_fun}
+disp_fun <- function(max_resistance, absorp_raster, host_raster){
+
+    # generate resistance raster
+resist <- raster(matrix(max_resistance, 100, 100), xmn = 0, xmx = 10, ymn = 0, ymx = 10) - host_raster
+
+    # create samc object to feed into analysis calculations
+samc_obj <- samc(
+              resistance = resist,
+              absorption = absorp_raster,
+              latlon = FALSE,
+              tr_fun = function(x) 1/mean(x),
+              override = FALSE,
+              directions = 8
+)
+
+    # Convert the occupancy data to probability of occurrence
+occ_prob <- 1 - 1 / (host_raster + 1)
+
+    # calculate long-term dispersal
+disp <- dispersal(samc_obj, occ_prob)
+
+    # map long-term dispersal
+disp_map <- map(samc_obj, disp)
+
+return(disp_map)
+}
+```
+
+Generate absorption raster - for now, we'll have uniform minimal absorption
+```{r absorp_raster}
+absorp <- raster(matrix(0.005, 100, 100), xmn=0, xmx=10, ymn=0, ymx=10)
+```
+
+Calculate connectivity (true hosts)
+```{r disp_calc}
+disp_map_true <- disp_fun(max_resistance = length(phy[[1]]$tip.label) + 1,
+                                absorp_raster = absorp,
+                                host_raster = host_sum)
+```
+
+
+## Calculate habitat and connectivity using only known hosts
+
+Calculate habitat suitability (known hosts)
+```{r}
+known_host_occurrence <- occurrence[known_host_indexes]
+
+known_host_sum <- empty_raster # initiate
+
+for(i in 1:length(known_host_occurrence)){
+known_host_sum <- known_host_sum + known_host_occurrence[[i]]
+}
+```
+
+Calculate connectivity (known hosts)
+```{r disp_calc}
+disp_map_known <- disp_fun(max_resistance = length(phy[[1]]$tip.label) + 1,
+                                absorp_raster = absorp,
+                                host_raster = known_host_sum)
+```
+
+
+## Calculate habitat and connectivity using known and phylogenetically predicted hosts 
+
+Calculate habitat suitability (known + potential hosts)
 ```{r}
 potential_host_occurrence <- occurrence[c(potential_host_indexes, known_host_indexes)]
 
@@ -315,10 +300,19 @@ potential_host_sum <- potential_host_sum + potential_host_occurrence[[i]]
 }
 ```
 
+Calculate connectivity (known + potential hosts)
+```{r long_disp_calc}
+disp_map_pred <- disp_fun(max_resistance = length(phy[[1]]$tip.label) + 1,
+                                absorp_raster = absorp,
+                                host_raster = potential_host_sum)
+```
 
-We can now compare three habitat suitability maps - the "true" habitat including all hosts, the "known"-host only habitat, and the phylogenetically-predicted potential host habitat.
 
-Set common colour scale
+## Compare available habitat
+
+We can now compare three habitat suitability maps - the true habitat including all hosts, the known-host only habitat, and the phylogenetically-predicted potential host habitat:
+
+Identify upper limit for common colour scale
 ```{r}
 hab_max_value <- max(cellStats(host_sum, "max"), cellStats(potential_host_sum, "max"))
 ```
@@ -347,7 +341,7 @@ p_phy_host_hab <- gplot(potential_host_sum) +
                       option="B")
 ```
 
-multiplot
+Multiplot
 ```{r compare_maps, fig.width = 6, fig.height = 5.5}
 grid.arrange(p_all_host_hab + ggtitle("true hosts"),
              p_known_host_hab + ggtitle("known hosts"),
@@ -356,50 +350,36 @@ grid.arrange(p_all_host_hab + ggtitle("true hosts"),
 ```
 
 
-## Measure predicted connectivity 
+## Compare connectivity 
 
-
-Calculate connectivity
-```{r long_disp_calc}
-long_disp_map_pred <- disp_fun(max_resistance = length(phy[[1]]$tip.label) + 1,
-                                absorp_raster = absorp,
-                                host_raster = potential_host_sum)
-```
-
-
-Compare dispersal predictions using plots
-
-Set common colour scale
+Identify upper limit for common colour scale
 ```{r}
-disp_max_value <- max(cellStats(long_disp_map_true, "max"), cellStats(long_disp_map_pred, "max"))
+disp_max_value <- max(cellStats(disp_map_true, "max"), cellStats(disp_map_pred, "max"))
 ```
-
 
 True hosts
-```{r plot_true_long_dispersal}
-p_disp_true <- gplot(long_disp_map_true) + 
+```{r plot_true_dispersal}
+p_disp_true <- gplot(disp_map_true) +
                   geom_tile(aes(fill=value)) +
                     scale_fill_viridis(limits = c(0, disp_max_value),
                                        option="B")
 ```
 
 Known hosts
-```{r plot_long_dispersal}
-p_disp_known <- gplot(long_disp_map_known) + 
+```{r plot_known_dispersal}
+p_disp_known <- gplot(disp_map_known) +
                   geom_tile(aes(fill=value)) +
                     scale_fill_viridis(limits = c(0, disp_max_value),
                                        option="B")
 ```
 
 Known + predicted hosts
-```{r plot_true_long_dispersal}
-p_disp_pred <- gplot(long_disp_map_pred) + 
+```{r plot_pred_dispersal}
+p_disp_pred <- gplot(disp_map_pred) + 
                   geom_tile(aes(fill = value)) +
                     scale_fill_viridis(limits = c(0, disp_max_value),
                                        option = "B")
-
 ```
-
 
 Multiplot
 ```{r compare_disp, fig.width = 6, fig.height = 5}
