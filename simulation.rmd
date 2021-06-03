@@ -16,26 +16,26 @@ knitr::opts_chunk$set(echo = TRUE)
 
 The code presented here was informed by the following online resources:
 
+
+
 # Setup
 
 ## Load packages
-```{r message=FALSE}
+```{r load_packages, message=FALSE}
 library(ape)
 library(geiger)
 library(TreeSim)
-
+library(castor)
 library(landscapeR)
 library(raster)
-
-library(castor)
-
+library(rasterVis)
+library(ggplot2)
+library(gridExtra)
 library(samc)
 ```
 
 
 ## Session information
-
-Inserted `eval = F` into chunk header.. this can be changed to T when needed. 
 
 ```{r get_info, eval = F}
 sessionInfo()
@@ -59,12 +59,12 @@ phy <- sim.bd.taxa(ntips, numbsim, lambda, mu, frac = 1, complete = TRUE, stochs
 ```
 
 
-## Simulate trait evolution
+## Simulate character evolution
 
-This function takes a phylogeny as input, and simulates the evolution of a trait on the phylogeny
+This function takes a phylogeny as input, and simulates the evolution of a character on the phylogeny
 
 Specify simulation parameters
-```{r phylo_params}
+```{r char_params}
 q <- list(rbind(c(-.03, .03), c(.03, -.03))) # transition matrix
 ```
 
@@ -94,7 +94,8 @@ host_names <- rownames(compatible)[host_indexes]
 
 For every tip on the phylogeny, we will simulate a raster map representing the species' presence/absence in cells covering a hypothetical geographic area
 
-```{r create_presabs_rasters}
+Create empty rasters for all species
+```{r create_species_rasters}
 occurrence <- vector("list", length = length(phy[[1]]$tip.label)) # create a list to hold the rasters
 names(occurrence) <- phy[[1]]$tip.label # assign each item a tip name
 
@@ -111,7 +112,7 @@ for(i in 1:length(occurrence)){
 ```
 
 Plot the distribution map generated for each tip. Compatible hosts are labeled in red.
-```{r fig.width = 6, fig.height = 14}
+```{r plot_species_dist, fig.width = 6, fig.height = 14}
 par(mfrow=c(5,2))
 for(i in 1:length(occurrence)){
     title_colour <- "black"
@@ -136,13 +137,9 @@ host_sum <- host_sum + host_occurrence[[i]] # add the remaining host rasters
 }
 ```
 
-Plot the summed raster - cell values are the number of compatible hosts present
-```{r plot_habitat_suit, fig.width = 6, fig.height = 5.5}
-plot(host_sum)
-```
 
+This can now be used to measure "true" habitat values (connectivity etc.)
 
-This map can now be used to measure "true" habitat values (connectivity etc.)
 
 # Methods: calculating connectivity
 
@@ -150,56 +147,50 @@ This map can now be used to measure "true" habitat values (connectivity etc.)
 ## Measure true connectivity 
 
 
-Generate absorption raster - for now, we'll have uniform minimal absorption
-```{r absorb_raster, fig.width = 6, fig.height = 5.5}
-absorp <- raster(matrix(0.005, 100, 100), xmn=0, xmx=10, ymn=0, ymx=10)
+Define connectivity calculation function (will be reused)
+> I imagine this will have to be edited to return the intermediate objects as well... as it stands, works for visual comparisons
 
-plot(absorp)
-```
+```{r long_disp_fun}
+disp_fun <- function(max_resistance, absorp_raster, host_raster){
 
+    # generate resistance raster
+resist <- raster(matrix(max_resistance, 100, 100), xmn = 0, xmx = 10, ymn = 0, ymx = 10) - host_raster
 
-generate resistance raster
-```{r resist_raster, fig.width = 6, fig.height = 5.5}
-resist <- raster(matrix(length(host_names) + 1, 100, 100), xmn = 0, xmx = 10, ymn = 0, ymx = 10) - host_sum
-
-plot(resist)
-```
-
-
-create samc object to feed into analysis calculations
-```{r create_samc}
+    # create samc object to feed into analysis calculations
 samc_obj <- samc(
               resistance = resist,
-              absorption = absorp,
+              absorption = absorp_raster,
               latlon = FALSE,
               tr_fun = function(x) 1/mean(x),
               override = FALSE,
               directions = 8
 )
 
-str(samc_obj)
-```
+    # Convert the occupancy data to probability of occurrence
+occ_prob <- 1 - 1 / (host_raster + 1)
 
+    # calculate long term dispersal
+long_disp <- dispersal(samc_obj, occ_prob)
 
-```{r prob_occurence, fig.width = 6, fig.height = 5.5}
-# Convert the occupancy data to probability of occurrence
-occ_prob_data <- 1 - 1/(host_sum+1)
-
-plot(occ_prob_data)
-```
-
-
-calculate long term dispersal
-```{r long_dispersal}
-long_disp <- dispersal(samc_obj, occ_prob_data)
-```
-
-
-plot long term dispersal
-```{r plot_long_dispersal, fig.width = 6, fig.height = 5.5}
+    # map long-term dispersal
 long_disp_map <- map(samc_obj, long_disp)
 
-plot(long_disp_map)
+return(long_disp_map)
+}
+```
+
+
+Generate absorption raster - for now, we'll have uniform minimal absorption
+```{r absorb_raster, fig.width = 6, fig.height = 5.5}
+absorp <- raster(matrix(0.005, 100, 100), xmn=0, xmx=10, ymn=0, ymx=10)
+```
+
+
+Calculate connectivity
+```{r long_disp_calc}
+long_disp_map_true <- disp_fun(max_resistance = length(phy[[1]]$tip.label) + 1,
+                                absorp_raster = absorp,
+                                host_raster = host_sum)
 ```
 
 
@@ -230,14 +221,16 @@ known_host_sum <- known_host_sum + known_host_occurrence[[i]]
 }
 ```
 
-Plot the summed raster
-```{r fig.width=6, fig.height=6}
-plot(known_host_sum)
+
+### Recalculate connectivity
+
+Calculate connectivity
+```{r long_disp_calc}
+long_disp_map_known <- disp_fun(max_resistance = length(phy[[1]]$tip.label) + 1,
+                                absorp_raster = absorp,
+                                host_raster = known_host_sum)
 ```
 
-The maximum value is reduced, but the colour gradient spans the same range - this makes the maps harder to compare and should be fixed
-
-* See this [stackexchange](https://stackoverflow.com/questions/36671499/color-ramp-with-the-same-colour-scale-across-different-plots-in-r)
 
 ### Revisit phylogeny 
 
@@ -322,12 +315,97 @@ potential_host_sum <- potential_host_sum + potential_host_occurrence[[i]]
 }
 ```
 
-Plot the summed raster
-```{r fig.width=6, fig.height=5.5}
-plot(potential_host_sum)
+
+We can now compare three habitat suitability maps - the "true" habitat including all hosts, the "known"-host only habitat, and the phylogenetically-predicted potential host habitat.
+
+Set common colour scale
+```{r}
+hab_max_value <- max(cellStats(host_sum, "max"), cellStats(potential_host_sum, "max"))
+```
+
+True hosts
+```{r plot_habitat_suit}
+p_all_host_hab <- gplot(host_sum) + 
+                  geom_tile(aes(fill=value)) +
+                  scale_fill_viridis(limits = c(0, hab_max_value),
+                      option="B")
+```
+
+Known hosts
+```{r plot_known_hosts}
+p_known_host_hab <- gplot(known_host_sum) + 
+                    geom_tile(aes(fill=value)) +
+                    scale_fill_viridis(limits=c(0, hab_max_value),
+                        option="B")
+```
+
+Known + predicted hosts
+```{r plot_knownpred_hosts}
+p_phy_host_hab <- gplot(potential_host_sum) + 
+                  geom_tile(aes(fill=value)) +
+                  scale_fill_viridis(limits=c(0, hab_max_value),
+                      option="B")
+```
+
+multiplot
+```{r compare_maps, fig.width = 6, fig.height = 5.5}
+grid.arrange(p_all_host_hab + ggtitle("true hosts"),
+             p_known_host_hab + ggtitle("known hosts"),
+             p_phy_host_hab + ggtitle("known + predicted hosts"),
+             ncol=2)
 ```
 
 
-Again, need to fix the colour scheme
+## Measure predicted connectivity 
 
-Add repeated connectivity measure and compare
+
+Calculate connectivity
+```{r long_disp_calc}
+long_disp_map_pred <- disp_fun(max_resistance = length(phy[[1]]$tip.label) + 1,
+                                absorp_raster = absorp,
+                                host_raster = potential_host_sum)
+```
+
+
+Compare dispersal predictions using plots
+
+Set common colour scale
+```{r}
+disp_max_value <- max(cellStats(long_disp_map_true, "max"), cellStats(long_disp_map_pred, "max"))
+```
+
+
+True hosts
+```{r plot_true_long_dispersal}
+p_disp_true <- gplot(long_disp_map_true) + 
+                  geom_tile(aes(fill=value)) +
+                    scale_fill_viridis(limits = c(0, disp_max_value),
+                                       option="B")
+```
+
+Known hosts
+```{r plot_long_dispersal}
+p_disp_known <- gplot(long_disp_map_known) + 
+                  geom_tile(aes(fill=value)) +
+                    scale_fill_viridis(limits = c(0, disp_max_value),
+                                       option="B")
+```
+
+Known + predicted hosts
+```{r plot_true_long_dispersal}
+p_disp_pred <- gplot(long_disp_map_pred) + 
+                  geom_tile(aes(fill = value)) +
+                    scale_fill_viridis(limits = c(0, disp_max_value),
+                                       option = "B")
+
+```
+
+
+Multiplot
+```{r compare_disp, fig.width = 6, fig.height = 5}
+grid.arrange(p_disp_true + ggtitle("true hosts"),
+             p_disp_known + ggtitle("known hosts"),
+             p_disp_pred + ggtitle("known + predicted hosts"),
+             ncol=2)
+```
+
