@@ -30,6 +30,7 @@ library(castor)
 library(landscapeR)
 library(raster)
 library(rasterVis)
+library(rgdal)
 library(ggplot2)
 library(gridExtra)
 library(viridis)
@@ -100,8 +101,8 @@ For every tip on the phylogeny, simulate a raster map representing the species' 
 
 Create empty rasters for all species
 ```{r create_species_rasters}
-occurrence <- vector("list", length = length(phy[[1]]$tip.label)) # create a list to hold the rasters
-names(occurrence) <- phy[[1]]$tip.label # assign each item a tip name
+occurrence <- vector("list", length = length(host_phy$tip.label)) # create a list to hold the rasters
+names(occurrence) <- host_phy$tip.label # assign each item a tip name
 
 empty_raster <- raster(matrix(0, 100, 100), xmn = 0, xmx = 10, ymn = 0, ymx = 10) # create an empty raster to fill with presence/absence for each species (reused)
 ```
@@ -189,9 +190,9 @@ plot(host_phy, tip.color=traits_estimate)
 
 
 
-# Methods: calculate connectivity
+# Methods: assess available habitat
 
-## Calculate available habitat and connectivity when all compatible hosts are considered
+## Calculate available habitat
 
 For now, we'll consider cell suitability to be equivalent to the number of compatible hosts present in each cell, calculated by summing the host rasters.
 
@@ -199,97 +200,51 @@ Calculate habitat suitability (true hosts)
 ```{r calc_hab_suitability}
 host_occurrence <- occurrence[host_indexes] # select only compatible host rasters
 
-host_sum <- empty_raster # initiate the summed map
+host_sum <- empty_raster + 1 # initiate the map - value of 1 added to all cells to avoid division by zero when calculating connectivity
 
 for(i in 1:length(host_occurrence)){
-host_sum <- host_sum + host_occurrence[[i]] # add the remaining host rasters
+host_sum <- host_sum + host_occurrence[[i]] # add the host rasters
 }
 ```
 
-Define connectivity calculation function (will be reused)
-> I imagine this will have to be edited to return the intermediate objects as well... works for visual comparisons as it stands
+Write suitability map to file
 
-```{r disp_fun}
-disp_fun <- function(max_resistance, absorp_raster, host_raster){
+> there might be a more preferred function for this?
 
-    # generate resistance raster
-resist <- raster(matrix(max_resistance, 100, 100), xmn = 0, xmx = 10, ymn = 0, ymx = 10) - host_raster
-
-    # create samc object to feed into analysis calculations
-samc_obj <- samc(
-              resistance = resist,
-              absorption = absorp_raster,
-              latlon = FALSE,
-              tr_fun = function(x) 1/mean(x),
-              override = FALSE,
-              directions = 8
-)
-
-    # Convert the occupancy data to probability of occurrence
-occ_prob <- 1 - 1 / (host_raster + 1)
-
-    # calculate long-term dispersal
-disp <- dispersal(samc_obj, occ_prob)
-
-    # map long-term dispersal
-disp_map <- map(samc_obj, disp)
-
-return(disp_map)
-}
+```{r}
+writeRaster(host_sum, "omniscape/true_host_map", format = "GTiff", overwrite=TRUE)
 ```
-
-Generate absorption raster - for now, we'll have uniform minimal absorption
-```{r absorp_raster}
-absorp <- raster(matrix(0.005, 100, 100), xmn=0, xmx=10, ymn=0, ymx=10)
-```
-
-Calculate connectivity (true hosts)
-```{r disp_calc}
-disp_map_true <- disp_fun(max_resistance = length(phy[[1]]$tip.label) + 1,
-                                absorp_raster = absorp,
-                                host_raster = host_sum)
-```
-
-
-## Calculate habitat and connectivity using only known hosts
 
 Calculate habitat suitability (known hosts)
 ```{r}
 known_host_occurrence <- occurrence[known_host_indexes]
 
-known_host_sum <- empty_raster # initiate
+known_host_sum <- empty_raster + 1
 
 for(i in 1:length(known_host_occurrence)){
 known_host_sum <- known_host_sum + known_host_occurrence[[i]]
 }
 ```
 
-Calculate connectivity (known hosts)
-```{r disp_calc}
-disp_map_known <- disp_fun(max_resistance = length(phy[[1]]$tip.label) + 1,
-                                absorp_raster = absorp,
-                                host_raster = known_host_sum)
+Write suitability map to file
+```{r}
+writeRaster(known_host_sum, "omniscape/known_host_map", format = "GTiff", overwrite=TRUE)
 ```
-
-
-## Calculate habitat and connectivity using known and phylogenetically predicted hosts 
 
 Calculate habitat suitability (known + potential hosts)
 ```{r}
-potential_host_occurrence <- occurrence[c(potential_host_indexes, known_host_indexes)]
+predicted_host_occurrence <- occurrence[c(potential_host_indexes, known_host_indexes)]
 
-potential_host_sum <- empty_raster # initiate
+predicted_host_sum <- empty_raster + 1
 
-for(i in 1:length(potential_host_occurrence)){
-potential_host_sum <- potential_host_sum + potential_host_occurrence[[i]]
+for(i in 1:length(predicted_host_occurrence)){
+predicted_host_sum <- predicted_host_sum + predicted_host_occurrence[[i]]
 }
 ```
 
-Calculate connectivity (known + potential hosts)
-```{r long_disp_calc}
-disp_map_pred <- disp_fun(max_resistance = length(phy[[1]]$tip.label) + 1,
-                                absorp_raster = absorp,
-                                host_raster = potential_host_sum)
+Write suitability map to file
+```{r}
+writeRaster(predicted_host_sum, "omniscape/predicted_host_map", format = "GTiff", overwrite=TRUE)
 ```
 
 
@@ -335,16 +290,31 @@ grid.arrange(p_all_host_hab + ggtitle("true hosts"),
 ```
 
 
-## Compare connectivity 
+
+# Methods: assess connectivity
+
+At this point, we're ready to carry out the actual connectivity calculations using Omniscape/Julia. The commands for this are found in 'omni_connectivity.txt'.
+
+Here, we load the output connectivity maps and plot them for comparison.
+
+Load maps
+```{r}
+connect_true_host <- raster("omniscape/true_host/cum_currmap.tif")
+
+connect_known_host <- raster("omniscape/known_host/cum_currmap.tif")
+
+connect_predict_host <- raster("omniscape/predicted_host/cum_currmap.tif")
+```
 
 Identify upper limit for common colour scale
 ```{r}
-disp_max_value <- max(cellStats(disp_map_true, "max"), cellStats(disp_map_pred, "max"))
+disp_max_value <- max(cellStats(connect_true_host, "max"),
+                      cellStats(connect_predict_host, "max"))
 ```
 
 True hosts
 ```{r plot_true_dispersal}
-p_disp_true <- gplot(disp_map_true) +
+p_connect_true_host <- gplot(connect_true_host) +
                   geom_tile(aes(fill=value)) +
                     scale_fill_viridis(limits = c(0, disp_max_value),
                                        option="B")
@@ -352,7 +322,7 @@ p_disp_true <- gplot(disp_map_true) +
 
 Known hosts
 ```{r plot_known_dispersal}
-p_disp_known <- gplot(disp_map_known) +
+p_connect_known_host <- gplot(connect_known_host) +
                   geom_tile(aes(fill=value)) +
                     scale_fill_viridis(limits = c(0, disp_max_value),
                                        option="B")
@@ -360,7 +330,7 @@ p_disp_known <- gplot(disp_map_known) +
 
 Known + predicted hosts
 ```{r plot_pred_dispersal}
-p_disp_pred <- gplot(disp_map_pred) + 
+p_connect_predict_host <- gplot(connect_predict_host) + 
                   geom_tile(aes(fill = value)) +
                     scale_fill_viridis(limits = c(0, disp_max_value),
                                        option = "B")
@@ -368,9 +338,9 @@ p_disp_pred <- gplot(disp_map_pred) +
 
 Multiplot
 ```{r compare_disp, fig.width = 6, fig.height = 5}
-grid.arrange(p_disp_true + ggtitle("true hosts"),
-             p_disp_known + ggtitle("known hosts"),
-             p_disp_pred + ggtitle("known + predicted hosts"),
+grid.arrange(p_connect_true_host + ggtitle("true hosts"),
+             p_connect_known_host + ggtitle("known hosts"),
+             p_connect_predict_host + ggtitle("known + predicted hosts"),
              ncol=2)
 ```
 

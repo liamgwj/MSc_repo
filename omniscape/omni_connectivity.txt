@@ -1,0 +1,10 @@
+# LJ 2021-06-04 use Omniscape in Julia to calculate omnidirectional connectivity
+
+
+using Omniscape
+
+run_omniscape("/home/liam/Documents/MSc/Thesis/analysis/MSc_repo/omniscape/true_host.ini"::String)
+
+run_omniscape("/home/liam/Documents/MSc/Thesis/analysis/MSc_repo/omniscape/known_host.ini"::String)
+
+run_omniscape("/home/liam/Documents/MSc/Thesis/analysis/MSc_repo/omniscape/predicted_host.ini"::String)
