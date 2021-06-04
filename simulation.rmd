@@ -25,6 +25,7 @@ The code presented here was informed by the following online resources:
 library(ape)
 library(geiger)
 library(TreeSim)
+library(picante)
 library(castor)
 library(landscapeR)
 library(raster)
@@ -57,7 +58,9 @@ mu <- 0 # extinction rate
 
 Simulate the phylogeny (output is a list, in this case containing only one phylogeny)
 ```{r sim_phylo}
-phy <- sim.bd.taxa(ntips, numbsim, lambda, mu, frac = 1, complete = TRUE, stochsampling = FALSE)
+host_phy_lst <- sim.bd.taxa(ntips, numbsim, lambda, mu, frac = 1, complete = TRUE, stochsampling = FALSE)
+
+host_phy <- host_phy_lst[[1]]
 ```
 
 
@@ -72,12 +75,12 @@ q <- list(rbind(c(-.03, .03), c(.03, -.03))) # transition matrix
 
 Simulate character evolution
 ```{r sim_char_evol}
-compatible <- sim.char(phy[[1]], q, model="discrete", nsim = 1)
+traits_true <- sim.char(host_phy, q, model="discrete", nsim = 1)
 ```
 
 Plot the simulated phylogeny with character states shown in colour
 ```{r plot_phylo1, fig.width = 6, fig.height = 6}
-plot(phy[[1]], tip.color=compatible)
+plot(host_phy, tip.color=traits_true)
 ```
 
 
@@ -85,9 +88,9 @@ We will consider tips with character state '2' (shown in red) to be compatible h
 
 Identify host names and indexes to use later
 ```{r host_info}
-host_indexes <- which(compatible == 2)
+host_indexes <- which(traits_true == 2)
 
-host_names <- rownames(compatible)[host_indexes]
+host_names <- rownames(traits_true)[host_indexes]
 ```
 
 
@@ -126,80 +129,62 @@ for(i in 1:length(occurrence)){
 
 ## Simulate incomplete host information
 
-Eliminate some known hosts
-```{r}
-known_host_indexes <- sample(host_indexes, round(length(host_indexes)/2, 0)) # keep roughly 1/2 of true hosts
 
-known_host_names <- rownames(compatible)[known_host_indexes]
+```{r}
+traits_known <- traits_true
+
+traits_known[sample(1:length(traits_true), round(length(traits_true)/3, 0))] <- NA # remove roughly 1/3 of trait values
+
+known_host_indexes <- which(traits_known == 2)
+known_host_names <- rownames(traits_known)[known_host_indexes]
+
+missing_host_indexes <- intersect(host_indexes, which(is.na(traits_known)))
+
+missing_nonhost_indexes <- setdiff(which(is.na(traits_known)), host_indexes)
 ```
 
-Replot the phylogeny with non-host tips in black, "known" hosts in red and "unknown" hosts in blue
+Replot the phylogeny with known non-host tips in black, known hosts in red, unknown true hosts in yellow and unknown non-hosts blue
 ```{r fig.width=6, fig.height=6}
-tip_cols <- compatible
-tip_cols[setdiff(host_indexes, known_host_indexes)] <- 4
+tip_cols <- traits_true
+tip_cols[missing_host_indexes] <- "goldenrod"
+tip_cols[missing_nonhost_indexes] <- "royalblue"
 
-plot(phy[[1]], tip.color=tip_cols)
+plot(host_phy, tip.color=tip_cols)
 ```
 
 
 
 # Methods: phylogenetic prediction
 
-> This is not a good phylogenetic prediction method - alter to allow adding potential hosts sequentially according to their PD from known hosts
-
-Calculate phylogenetic distances separating each tip from nearest known host
+Prepare trait data - transpose and remove species with unknown values
 ```{r}
-# get all pairwise distances
-dist <- get_all_pairwise_distances(phy[[1]], only_clades=phy[[1]]$tip.label)
-
-# remove duplicate distances (since a-b and b-a are equivalent) and convert to data.frame
-dist2 <- matrix(dist, ncol = length(phy[[1]]$tip.label), dimnames = list(phy[[1]]$tip.label, phy[[1]]$tip.label))
-
-dist2[col(dist2) == row(dist2) | upper.tri(dist2)] <- NA
-
-sp <- subset(as.data.frame.table(dist2), !is.na(Freq)) 
-
-names(sp) <- c("sp2", "sp1", "dist")
-
-# lists of hosts
-host_names <- phy[[1]]$tip.label[known_host_indexes]
-
-# set up data frame
-out <- data.frame(tip = phy[[1]]$tip.label)
-out$minDist <- NA
-
-# fill with distances
-for(i in 1:length(phy[[1]]$tip.label)){
-    
-dists <- sp[which(sp$sp1==phy[[1]]$tip.label[i]|sp$sp2==phy[[1]]$tip.label[i]),]
-
-dh <- dists[which(dists$sp1%in%host_names&!dists$sp1==phy[[1]]$tip.label[i]|dists$sp2%in%host_names&!dists$sp2==phy[[1]]$tip.label[i]),]
-
-out$minDist[i] <- min(dh$dist)
-}
-
-out[order(out$minDist),]
+comp_unknown <- t(na.omit(as.data.frame(traits_known)))[1,]
 ```
 
-Calculate mean nearest host distance among known hosts
+Use ancestral state reconstruction to estimate missing trait values
 ```{r}
-host_ntd <- mean(out$minDist[known_host_indexes])
+comp_ancPhyEst <- phyEstimateDisc(phy = host_phy,
+                                  trait = comp_unknown,
+                                  best.state= TRUE,
+                                  cutoff = 0.5)
 ```
 
-Identify non-known host tips within mean host ntd
+Combine estimated trait values with known values
 ```{r}
-potential_host_indexes <- as.numeric(rownames(out[which(out$minDist<=host_ntd & !out$tip%in%known_host_names),]))
+traits_estimate <- traits_known
+
+traits_estimate[which(is.na(traits_estimate))] <- as.numeric(comp_ancPhyEst$estimated.state)
+
+potential_host_indexes <- setdiff(which(traits_estimate == 2), known_host_indexes)
 ```
 
-Replot the phylogeny with non-host tips in black, known hosts in red, unknown hosts in blue, unknown hosts that are considered potential hosts in yellow, and non-hosts that are considered potential hosts in pink
+Replot and compare phylogenies
 ```{r fig.width = 6, fig.height = 6}
-tip_cols2 <- tip_cols
+par(mfrow=c(1,2))
 
-tip_cols2[setdiff(potential_host_indexes, host_indexes)] <- 6
+plot(host_phy, tip.color=tip_cols)
 
-tip_cols2[intersect(potential_host_indexes, host_indexes)] <- 7
-
-plot(phy[[1]], tip.color=tip_cols2)
+plot(host_phy, tip.color=traits_estimate)
 ```
 
 
