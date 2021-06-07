@@ -24,17 +24,17 @@ The code presented here was informed by the following online resources:
 ```{r load_packages, message=FALSE}
 library(ape)
 library(geiger)
-library(TreeSim)
 library(picante)
-library(castor)
-library(landscapeR)
+library(TreeSim)
+
 library(raster)
 library(rasterVis)
 library(rgdal)
+library(landscapeR)
+
 library(ggplot2)
 library(gridExtra)
 library(viridis)
-library(samc)
 ```
 
 
@@ -254,7 +254,7 @@ We can now compare three habitat suitability maps - the true habitat including a
 
 Identify upper limit for common colour scale
 ```{r}
-hab_max_value <- max(cellStats(host_sum, "max"), cellStats(potential_host_sum, "max"))
+hab_max_value <- max(cellStats(host_sum, "max"), cellStats(predicted_host_sum, "max"))
 ```
 
 True hosts
@@ -275,7 +275,7 @@ p_known_host_hab <- gplot(known_host_sum) +
 
 Known + predicted hosts
 ```{r plot_knownpred_hosts}
-p_phy_host_hab <- gplot(potential_host_sum) + 
+p_phy_host_hab <- gplot(predicted_host_sum) + 
                   geom_tile(aes(fill=value)) +
                   scale_fill_viridis(limits=c(0, hab_max_value),
                       option="B")
