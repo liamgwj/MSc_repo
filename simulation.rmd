@@ -299,23 +299,34 @@ grid.arrange(p_all_host_hab + ggtitle("true hosts"),
 
 # Methods: assess connectivity
 
-At this point, we're ready to carry out the actual connectivity calculations using Omniscape/Julia. The commands for this are found in 'omni_connectivity.txt'.
-
+At this point, we're ready to carry out the actual connectivity calculations using Omniscape/Julia.
 
 ```{r}
 juliaUsing("Omniscape")
 
-juliaCall("run_omniscape(\"/home/liam/Documents/MSc/Thesis/analysis/MSc_repo/omniscape/true_host.ini\"::String)")
+juliaCall(
+    paste("run_omniscape(\"",
+          getwd(),
+          "/omniscape/true_host.ini\"::String)",
+          sep=""))
 ```
 
 
 ```{r}
-juliaCall("run_omniscape(\"/home/liam/Documents/MSc/Thesis/analysis/MSc_repo/omniscape/known_host.ini\"::String)")
+juliaCall(
+    paste("run_omniscape(\"",
+          getwd(),
+          "/omniscape/known_host.ini\"::String)",
+          sep=""))
 ```
 
 
 ```{r}
-juliaCall("run_omniscape(\"/home/liam/Documents/MSc/Thesis/analysis/MSc_repo/omniscape/predicted_host.ini\"::String)")
+juliaCall(
+    paste("run_omniscape(\"",
+          getwd(),
+          "/omniscape/predicted_host.ini\"::String)",
+          sep=""))
 ```
 
 
