@@ -16,6 +16,10 @@ knitr::opts_chunk$set(echo = TRUE)
 # Resources
 The code presented here was informed by the following online resources:
 
+LandscapeR documentation: https://cran.r-project.org/web/packages/landscapeR/vignettes/landscapeR.html
+
+Omniscape documentation: https://docs.circuitscape.org/Omniscape.jl/stable/
+
 
 
 # Setup
@@ -35,6 +39,8 @@ library(landscapeR)
 library(ggplot2)
 library(gridExtra)
 library(viridis)
+
+library(XRJulia)
 ```
 
 
@@ -294,6 +300,25 @@ grid.arrange(p_all_host_hab + ggtitle("true hosts"),
 # Methods: assess connectivity
 
 At this point, we're ready to carry out the actual connectivity calculations using Omniscape/Julia. The commands for this are found in 'omni_connectivity.txt'.
+
+
+```{r}
+juliaUsing("Omniscape")
+
+juliaCall("run_omniscape(\"/home/liam/Documents/MSc/Thesis/analysis/MSc_repo/omniscape/true_host.ini\"::String)")
+```
+
+
+```{r}
+juliaCall("run_omniscape(\"/home/liam/Documents/MSc/Thesis/analysis/MSc_repo/omniscape/known_host.ini\"::String)")
+```
+
+
+```{r}
+juliaCall("run_omniscape(\"/home/liam/Documents/MSc/Thesis/analysis/MSc_repo/omniscape/predicted_host.ini\"::String)")
+```
+
+
 
 Here, we load the output connectivity maps and plot them for comparison.
 
