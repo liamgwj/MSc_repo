@@ -203,7 +203,7 @@ plot(host_phy, tip.color=traits_estimate)
 For now, we'll consider cell suitability to be equivalent to the number of compatible hosts present in each cell, calculated by summing the host rasters.
 
 Calculate habitat suitability (true hosts)
-```{r calc_hab_suitability}
+```{r calc_suitability_true}
 host_occurrence <- occurrence[host_indexes] # select only compatible host rasters
 
 host_sum <- empty_raster + 1 # initiate the map - value of 1 added to all cells to avoid division by zero when calculating connectivity
@@ -217,12 +217,12 @@ Write suitability map to file
 
 > there might be a more preferred function for this?
 
-```{r}
+```{r write_suitability_true}
 writeRaster(host_sum, "omniscape/true_host_map", format = "GTiff", overwrite=TRUE)
 ```
 
 Calculate habitat suitability (known hosts)
-```{r}
+```{r calc_suitability_known}
 known_host_occurrence <- occurrence[known_host_indexes]
 
 known_host_sum <- empty_raster + 1
@@ -233,12 +233,12 @@ known_host_sum <- known_host_sum + known_host_occurrence[[i]]
 ```
 
 Write suitability map to file
-```{r}
+```{r write_suitability_known}
 writeRaster(known_host_sum, "omniscape/known_host_map", format = "GTiff", overwrite=TRUE)
 ```
 
 Calculate habitat suitability (known + potential hosts)
-```{r}
+```{r calc_suitability_predicted}
 predicted_host_occurrence <- occurrence[c(potential_host_indexes, known_host_indexes)]
 
 predicted_host_sum <- empty_raster + 1
@@ -249,7 +249,7 @@ predicted_host_sum <- predicted_host_sum + predicted_host_occurrence[[i]]
 ```
 
 Write suitability map to file
-```{r}
+```{r write_suitability_predicted}
 writeRaster(predicted_host_sum, "omniscape/predicted_host_map", format = "GTiff", overwrite=TRUE)
 ```
 
@@ -259,12 +259,12 @@ writeRaster(predicted_host_sum, "omniscape/predicted_host_map", format = "GTiff"
 We can now compare three habitat suitability maps - the true habitat including all hosts, the known-host only habitat, and the phylogenetically-predicted potential host habitat:
 
 Identify upper limit for common colour scale
-```{r}
+```{r suitability_colour_scale}
 hab_max_value <- max(cellStats(host_sum, "max"), cellStats(predicted_host_sum, "max"))
 ```
 
 True hosts
-```{r plot_habitat_suit}
+```{r plot_suitability_true}
 p_all_host_hab <- gplot(host_sum) + 
                   geom_tile(aes(fill=value)) +
                   scale_fill_viridis(limits = c(0, hab_max_value),
@@ -272,7 +272,7 @@ p_all_host_hab <- gplot(host_sum) +
 ```
 
 Known hosts
-```{r plot_known_hosts}
+```{r plot_suitability_known}
 p_known_host_hab <- gplot(known_host_sum) + 
                     geom_tile(aes(fill=value)) +
                     scale_fill_viridis(limits=c(0, hab_max_value),
@@ -280,7 +280,7 @@ p_known_host_hab <- gplot(known_host_sum) +
 ```
 
 Known + predicted hosts
-```{r plot_knownpred_hosts}
+```{r plot_suitability_predicted}
 p_phy_host_hab <- gplot(predicted_host_sum) + 
                   geom_tile(aes(fill=value)) +
                   scale_fill_viridis(limits=c(0, hab_max_value),
@@ -288,7 +288,7 @@ p_phy_host_hab <- gplot(predicted_host_sum) +
 ```
 
 Multiplot
-```{r compare_maps, fig.width = 6, fig.height = 5.5}
+```{r compare_suitability_maps, fig.width = 6, fig.height = 5.5}
 grid.arrange(p_all_host_hab + ggtitle("true hosts"),
              p_known_host_hab + ggtitle("known hosts"),
              p_phy_host_hab + ggtitle("known + predicted hosts"),
@@ -301,7 +301,7 @@ grid.arrange(p_all_host_hab + ggtitle("true hosts"),
 
 At this point, we're ready to carry out the actual connectivity calculations using Omniscape/Julia.
 
-```{r}
+```{r julia_connectivity_true}
 juliaUsing("Omniscape")
 
 juliaCommand(
@@ -312,7 +312,7 @@ juliaCommand(
 ```
 
 
-```{r}
+```{r julia_connectivity_known}
 juliaCommand(
     paste("run_omniscape(\"",
           getwd(),
@@ -321,7 +321,7 @@ juliaCommand(
 ```
 
 
-```{r}
+```{r julia_connectivity_predicted}
 juliaCommand(
     paste("run_omniscape(\"",
           getwd(),
@@ -334,7 +334,7 @@ juliaCommand(
 Here, we load the output connectivity maps and plot them for comparison.
 
 Load maps
-```{r}
+```{r load_connectivity_maps}
 connect_true_host <- raster("omniscape/true_host/cum_currmap.tif")
 
 connect_known_host <- raster("omniscape/known_host/cum_currmap.tif")
@@ -343,13 +343,13 @@ connect_predict_host <- raster("omniscape/predicted_host/cum_currmap.tif")
 ```
 
 Identify upper limit for common colour scale
-```{r}
+```{r connectivity_colour_scale}
 disp_max_value <- max(cellStats(connect_true_host, "max"),
                       cellStats(connect_predict_host, "max"))
 ```
 
 True hosts
-```{r plot_true_dispersal}
+```{r plot_connectivity_true}
 p_connect_true_host <- gplot(connect_true_host) +
                   geom_tile(aes(fill=value)) +
                     scale_fill_viridis(limits = c(0, disp_max_value),
@@ -357,7 +357,7 @@ p_connect_true_host <- gplot(connect_true_host) +
 ```
 
 Known hosts
-```{r plot_known_dispersal}
+```{r plot_connectivity_known}
 p_connect_known_host <- gplot(connect_known_host) +
                   geom_tile(aes(fill=value)) +
                     scale_fill_viridis(limits = c(0, disp_max_value),
@@ -365,7 +365,7 @@ p_connect_known_host <- gplot(connect_known_host) +
 ```
 
 Known + predicted hosts
-```{r plot_pred_dispersal}
+```{r plot_connectivity_predicted}
 p_connect_predict_host <- gplot(connect_predict_host) + 
                   geom_tile(aes(fill = value)) +
                     scale_fill_viridis(limits = c(0, disp_max_value),
@@ -373,7 +373,7 @@ p_connect_predict_host <- gplot(connect_predict_host) +
 ```
 
 Multiplot
-```{r compare_disp, fig.width = 6, fig.height = 5}
+```{r compare_connectivity_maps, fig.width = 6, fig.height = 5}
 grid.arrange(p_connect_true_host + ggtitle("true hosts"),
              p_connect_known_host + ggtitle("known hosts"),
              p_connect_predict_host + ggtitle("known + predicted hosts"),
