@@ -28,6 +28,7 @@ Omniscape documentation: https://docs.circuitscape.org/Omniscape.jl/stable/
 ```{r load_packages, message=FALSE}
 library(ape)
 library(geiger)
+library(caper)
 library(picante)
 library(TreeSim)
 
@@ -39,6 +40,8 @@ library(landscapeR)
 library(ggplot2)
 library(gridExtra)
 library(viridis)
+
+library(dplyr)
 
 library(XRJulia)
 ```
@@ -53,57 +56,105 @@ sessionInfo()
 
 # Methods: input data
 
-## Simulate host phylogeny
+```{r}
+trait_rate <- 0.1
 
-Specify the parameters for the simulation
-```{r define_params}
-ntips <- 20 # number of tips on each simulated phylogeny
-numbsim <- 1 # number of phylogenies to simulate
-lambda <- 0.1 # speciation rate
-mu <- 0 # extinction rate
+proportion_missing <- 0.3
+
+cooccurrence_pattern <- "dispersed"
 ```
 
+
+```{r eval = F}
+input_params <- expand.grid(trait_rate = c(0.05, 0.1, 0.2, 0.3),
+                            prop_missing = c(0.05, 0.1, 0.25, 0.5),
+                            coocurrence_pat = c("clustered",
+                                                "random",
+                                                "dispersed"))
+```
+
+```{r eval = F}
+for(i in 1:nrow(input_params)){
+    
+    trait_rate <- input_params$trait_rate[i]
+    
+    proportion_missing <- input_params$prop_missing[i]
+    
+    cooccurrence_pattern <- input_params$coocurrence_pat[i]
+    
+    
+```
+
+## Simulate host phylogeny
+
 Simulate the phylogeny (output is a list, in this case containing only one phylogeny)
-```{r sim_phylo}
-host_phy_lst <- sim.bd.taxa(ntips, numbsim, lambda, mu, frac = 1, complete = TRUE, stochsampling = FALSE)
+```{r sim_phylo, fig.width = 6, fig.height = 6}
+host_phy_lst <- sim.bd.taxa(n = 20, # number of tips on each phylogeny
+                            numbsim = 1, # number of phylogenies
+                            lambda = 0.2, # speciation rate
+                            mu = 0.1, # extinction rate
+                            complete = FALSE) #,
+                            # stochsampling = FALSE,
+                            # frac = 0.8)
 
 host_phy <- host_phy_lst[[1]]
+
+# plot(host_phy)
 ```
 
 
 ## Simulate character evolution
 
-This function takes a phylogeny as input, and simulates the evolution of a character on the phylogeny
+This function takes a phylogeny as input, and simulates the evolution of a discrete character on the phylogeny
 
-Specify simulation parameters
-```{r char_params}
-q <- list(rbind(c(-.03, .03), c(.03, -.03))) # transition matrix
-```
+```{r}
+traits_true <- rTraitDisc(phy = host_phy,
+                          model = "ER",
+                          k = 2,
+                          rate = trait_rate,
+                          states = c("NonHost", "Host"),
+                          #freq = rep(1/k, k),
+                          ancestor = FALSE,
+                          root.value = 1)
 
-Simulate character evolution
-```{r sim_char_evol}
-traits_true <- sim.char(host_phy, q, model="discrete", nsim = 1)
+traits_true <- data.frame(hostStatus = traits_true)
+traits_true$tip <- rownames(traits_true)
 ```
 
 Plot the simulated phylogeny with character states shown in colour
 ```{r plot_phylo1, fig.width = 6, fig.height = 6}
-plot(host_phy, tip.color=traits_true)
+tipcol_traits_true <- data.frame(tipcol = rep("black", nrow(traits_true)))
+tipcol_traits_true$tipcol[which(traits_true$hostStatus == "Host")] <- "red"
+
+plot(host_phy, tip.color = tipcol_traits_true$tipcol)
 ```
 
 
-We will consider tips with character state '2' (shown in red) to be compatible hosts, while tips with state '1' (in black) are not compatible.
-
 Identify host names and indexes to use later
 ```{r host_info}
-host_indexes <- which(traits_true == 2)
+host_indexes <- which(traits_true$hostStatus == "Host")
 
 host_names <- rownames(traits_true)[host_indexes]
+```
+
+Assess phylogenetic signal
+```{r}
+host_signal <- phylo.d(data = traits_true,
+                       phy = host_phy,
+                       names.col = tip,
+                       binvar = hostStatus,
+                       permut = 1000,
+                       rnd.bias = NULL)
 ```
 
 
 ## Simulate tip geographic distributions
 
 For every tip on the phylogeny, simulate a raster map representing the species' presence/absence in cells covering a hypothetical geographic area
+
+
+
+### Simple simulation of random patchy distributions
 
 Create empty rasters for all species
 ```{r create_species_rasters}
@@ -115,10 +166,27 @@ empty_raster <- raster(matrix(0, 100, 100), xmn = 0, xmx = 10, ymn = 0, ymx = 10
 
 Loop to simulate occurrence for each tip. Number of patches and patch size are sampled randomly for each species from the ranges specified, and warnings are disabled to avoid messages generated when patches overlap.
 ```{r sim_species_dist, warning = FALSE}
+
+seed_locations <- sample(1:length(empty_raster[]), 10*length(host_phy$tip.label))
+
 for(i in 1:length(occurrence)){
     np <- sample(1:10, 1) # number of patches
     sz <- sample(10:250, 1) # size of each patch
-    occurrence[[i]] <- makeClass(empty_raster, npatch = np, size = sz)
+    
+    if(cooccurrence_pattern == "clustered"){
+    seed_loc_subset <- sample(seed_locations[1:10], np)}
+    
+    if(cooccurrence_pattern == "random"){
+    seed_loc_subset <- sample(1:length(empty_raster[]), np)}
+    
+    if(cooccurrence_pattern == "dispersed"){
+    if(i==1){ seed_loc_subset <- seed_locations[i:np]
+    }else{ seed_loc_subset <- seed_locations[(((i-1)*10)+1):(((i-1)*10)+np)]}}
+    
+    occurrence[[i]] <- makeClass(empty_raster,
+                                 npatch = np,
+                                 size = sz,
+                                 pts = seed_loc_subset)
 }
 ```
 
@@ -140,23 +208,23 @@ for(i in 1:length(occurrence)){
 ```{r}
 traits_known <- traits_true
 
-traits_known[sample(1:length(traits_true), round(length(traits_true)/3, 0))] <- NA # remove roughly 1/3 of trait values
+traits_known$hostStatus[sample(1:length(traits_true$hostStatus), round(length(traits_true$hostStatus)*proportion_missing, 0))] <- NA
 
-known_host_indexes <- which(traits_known == 2)
+known_host_indexes <- which(traits_known$hostStatus == "Host")
 known_host_names <- rownames(traits_known)[known_host_indexes]
 
-missing_host_indexes <- intersect(host_indexes, which(is.na(traits_known)))
+missing_host_indexes <- intersect(host_indexes, which(is.na(traits_known$hostStatus)))
 
-missing_nonhost_indexes <- setdiff(which(is.na(traits_known)), host_indexes)
+missing_nonhost_indexes <- setdiff(which(is.na(traits_known$hostStatus)), host_indexes)
 ```
 
 Replot the phylogeny with known non-host tips in black, known hosts in red, unknown true hosts in yellow and unknown non-hosts blue
 ```{r fig.width=6, fig.height=6}
-tip_cols <- traits_true
-tip_cols[missing_host_indexes] <- "goldenrod"
-tip_cols[missing_nonhost_indexes] <- "royalblue"
+tipcol_traits_known <- tipcol_traits_true
+tipcol_traits_known$tipcol[missing_host_indexes] <- "goldenrod"
+tipcol_traits_known$tipcol[missing_nonhost_indexes] <- "royalblue"
 
-plot(host_phy, tip.color=tip_cols)
+plot(host_phy, tip.color=tipcol_traits_known$tipcol)
 ```
 
 
@@ -165,7 +233,7 @@ plot(host_phy, tip.color=tip_cols)
 
 Prepare trait data - transpose and remove species with unknown values
 ```{r}
-comp_unknown <- t(na.omit(as.data.frame(traits_known)))[1,]
+comp_unknown <- t(na.omit(traits_known))[1,]
 ```
 
 Use ancestral state reconstruction to estimate missing trait values
@@ -180,18 +248,28 @@ Combine estimated trait values with known values
 ```{r}
 traits_estimate <- traits_known
 
-traits_estimate[which(is.na(traits_estimate))] <- as.numeric(comp_ancPhyEst$estimated.state)
+comp_ancPhyEst$tip <- rownames(comp_ancPhyEst)
 
-potential_host_indexes <- setdiff(which(traits_estimate == 2), known_host_indexes)
+traits_estimate <- left_join(traits_estimate, comp_ancPhyEst, by = c("tip" = "tip"))
+
+for(i in 1:nrow(traits_estimate)){
+    if(is.na(traits_estimate$hostStatus[i])){
+        traits_estimate$hostStatus[i] <- traits_estimate$estimated.state[i]
+}}
+
+potential_host_indexes <- setdiff(which(traits_estimate$hostStatus == "Host"), known_host_indexes)
 ```
 
 Replot and compare phylogenies
 ```{r fig.width = 6, fig.height = 6}
+tipcol_traits_estimate <- data.frame(tipcol = rep("black", nrow(traits_estimate)))
+tipcol_traits_estimate$tipcol[which(traits_estimate$hostStatus == "Host")] <- "red"
+
 par(mfrow=c(1,2))
 
-plot(host_phy, tip.color=tip_cols)
+plot(host_phy, tip.color = tipcol_traits_known$tipcol)
 
-plot(host_phy, tip.color=traits_estimate)
+plot(host_phy, tip.color = tipcol_traits_estimate$tipcol)
 ```
 
 
@@ -206,51 +284,61 @@ Calculate habitat suitability (true hosts)
 ```{r calc_suitability_true}
 host_occurrence <- occurrence[host_indexes] # select only compatible host rasters
 
-host_sum <- empty_raster + 1 # initiate the map - value of 1 added to all cells to avoid division by zero when calculating connectivity
+host_sum <- empty_raster
 
 for(i in 1:length(host_occurrence)){
 host_sum <- host_sum + host_occurrence[[i]] # add the host rasters
 }
+
+host_sum_capped <- host_sum + 1 # value of 1 added to all cells to avoid division by zero when calculating connectivity
+
+host_sum_capped[which(host_sum_capped[] > 4)] <- 4 # set all values > 4 to 4 -- result is that all cells containing 3+ hosts are considered equally suitable
 ```
 
 Write suitability map to file
 
-> there might be a more preferred function for this?
-
-```{r write_suitability_true}
-writeRaster(host_sum, "omniscape/true_host_map", format = "GTiff", overwrite=TRUE)
+```{r write_suitability_true, warning=FALSE}
+writeRaster(host_sum_capped, "omniscape/true_host_map", format = "GTiff", overwrite=TRUE)
 ```
 
 Calculate habitat suitability (known hosts)
 ```{r calc_suitability_known}
 known_host_occurrence <- occurrence[known_host_indexes]
 
-known_host_sum <- empty_raster + 1
+known_host_sum <- empty_raster
 
 for(i in 1:length(known_host_occurrence)){
 known_host_sum <- known_host_sum + known_host_occurrence[[i]]
 }
+
+known_host_sum_capped <- known_host_sum + 1
+
+known_host_sum_capped[which(known_host_sum_capped[] > 4)] <- 4
 ```
 
 Write suitability map to file
-```{r write_suitability_known}
-writeRaster(known_host_sum, "omniscape/known_host_map", format = "GTiff", overwrite=TRUE)
+```{r write_suitability_known, warning=FALSE}
+writeRaster(known_host_sum_capped, "omniscape/known_host_map", format = "GTiff", overwrite=TRUE)
 ```
 
 Calculate habitat suitability (known + potential hosts)
 ```{r calc_suitability_predicted}
 predicted_host_occurrence <- occurrence[c(potential_host_indexes, known_host_indexes)]
 
-predicted_host_sum <- empty_raster + 1
+predicted_host_sum <- empty_raster
 
 for(i in 1:length(predicted_host_occurrence)){
 predicted_host_sum <- predicted_host_sum + predicted_host_occurrence[[i]]
 }
+
+predicted_host_sum_capped <- predicted_host_sum + 1
+
+predicted_host_sum_capped[which(predicted_host_sum_capped[] > 4)] <- 4
 ```
 
 Write suitability map to file
-```{r write_suitability_predicted}
-writeRaster(predicted_host_sum, "omniscape/predicted_host_map", format = "GTiff", overwrite=TRUE)
+```{r write_suitability_predicted, warning=FALSE}
+writeRaster(predicted_host_sum_capped, "omniscape/predicted_host_map", format = "GTiff", overwrite=TRUE)
 ```
 
 
@@ -300,6 +388,18 @@ grid.arrange(p_all_host_hab + ggtitle("true hosts"),
 # Methods: assess connectivity
 
 At this point, we're ready to carry out the actual connectivity calculations using Omniscape/Julia.
+
+Remove any files from previous runs
+```{r}
+if(file.exists("omniscape/true_host")){
+    unlink("omniscape/true_host", recursive = TRUE)}
+
+if(file.exists("omniscape/known_host")){
+    unlink("omniscape/known_host", recursive = TRUE)}
+
+if(file.exists("omniscape/predicted_host")){
+    unlink("omniscape/predicted_host", recursive = TRUE)}
+```
 
 ```{r julia_connectivity_true}
 juliaUsing("Omniscape")
@@ -378,5 +478,87 @@ grid.arrange(p_connect_true_host + ggtitle("true hosts"),
              p_connect_known_host + ggtitle("known hosts"),
              p_connect_predict_host + ggtitle("known + predicted hosts"),
              ncol=2)
+```
+
+
+
+```{r}
+# parameter master
+input_params <- expand.grid(trait_rate = c(0.05, 0.1, 0.2, 0.3),
+                            prop_missing = c(0.05, 0.1, 0.25, 0.5),)
+
+# simulation loop
+for(j in 1:nrow(input_params)){
+    
+    # set run parameters
+    trait_rate <- input_params$trait_rate[j]
+    proportion_missing <- input_params$prop_missing[j]
+    
+    # simulate phylogeny
+    host_phy_lst <- sim.bd.taxa(n = 20, # number of tips on each phylogeny
+                                numbsim = 1, # number of phylogenies
+                                lambda = 0.2, # speciation rate
+                                mu = 0.1, # extinction rate
+                                complete = FALSE) #,
+                                # stochsampling = FALSE,
+                                # frac = 0.8)
+    host_phy <- host_phy_lst[[1]]
+    
+    # simulate character evolution
+    traits_true <- rTraitDisc(phy = host_phy,
+                          model = "ER",
+                          k = 2,
+                          rate = trait_rate,
+                          states = c("NonHost", "Host"),
+                          #freq = rep(1/k, k),
+                          ancestor = FALSE,
+                          root.value = 1)
+    traits_true <- data.frame(hostStatus = traits_true)
+    traits_true$tip <- rownames(traits_true)
+    
+    # Identify host names and indexes to use later
+    host_indexes <- which(traits_true$hostStatus == "Host")
+    host_names <- rownames(traits_true)[host_indexes]
+    
+    # Assess phylogenetic signal
+    host_signal <- phylo.d(data = traits_true,
+                           phy = host_phy,
+                           names.col = tip,
+                           binvar = hostStatus,
+                           permut = 1000,
+                           rnd.bias = NULL)
+    
+    # Simulate incomplete host information
+    traits_known <- traits_true
+    traits_known$hostStatus[sample(1:length(traits_true$hostStatus),
+            round(length(traits_true$hostStatus)*proportion_missing, 0))] <- NA
+    known_host_indexes <- which(traits_known$hostStatus == "Host")
+    known_host_names <- rownames(traits_known)[known_host_indexes]
+    missing_host_indexes <- intersect(host_indexes,
+                                      which(is.na(traits_known$hostStatus)))
+    missing_nonhost_indexes <- setdiff(which(is.na(traits_known$hostStatus)),
+                                       host_indexes)
+    
+    # phylogenetic prediction
+    comp_unknown <- t(na.omit(traits_known))[1,]
+    comp_ancPhyEst <- phyEstimateDisc(phy = host_phy,
+                                      trait = comp_unknown,
+                                      best.state= TRUE,
+                                      cutoff = 0.5)
+    traits_estimate <- traits_known
+    comp_ancPhyEst$tip <- rownames(comp_ancPhyEst)
+    traits_estimate <- left_join(traits_estimate, comp_ancPhyEst,
+                                 by = c("tip" = "tip"))
+    for(i in 1:nrow(traits_estimate)){
+        if(is.na(traits_estimate$hostStatus[i])){
+            traits_estimate$hostStatus[i] <- traits_estimate$estimated.state[i]
+    }}
+    potential_host_indexes <- setdiff(which(traits_estimate$hostStatus=="Host"),
+                                      known_host_indexes)
+    
+    
+    
+    
+    
 ```
 
