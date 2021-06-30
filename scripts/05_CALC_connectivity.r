@@ -1,41 +1,24 @@
 # LJ 2021-06-25
 
-library(XRJulia)
+# requires packages 'raster', 'XRJulia'
 
-# read in character data
-
-i = 1
-
-char <- read.csv(paste0("output/sim_hostStatus/", now, "/true",
-                        "/phy", i, "_charTrue.csv"),
-                 row.names = 1)
-
-# read in species occurrence rasters
-
-occurrence <- vector("list", nrow(char))
-
-for(j in 1:nrow(char)){
-    
-    occurrence[[j]] <- raster(paste0("output/sim_occurrence/", now, "/phy", i,
-                                   "/", rownames(char)[j], "_occurrence.tif"))
-}
-
-
-## assess available habitat
+# assess available habitat
 
 # For now, we'll consider cell suitability to be equivalent to the number of compatible hosts present in each cell, calculated by summing the host rasters.
 
 # Calculate habitat suitability
 
-suitability <- raster(matrix(1, params$landscape_dim, params$landscape_dim),
-                      xmn = 0, xmx = 10,
-                      ymn = 0, ymx = 10)
+suitability <- raster::raster(matrix(1,
+                                     nrow(occurrence[[1]]),
+                                     ncol(occurrence[[1]])),
+                              xmn = 0, xmx = 10,
+                              ymn = 0, ymx = 10)
 
-for(j in 1:nrow(char)){
+for(i in 1:nrow(char)){
     
-    if(char$hostStatus[j] == "Host"){
+    if(char$hostStatus[i] == "Host"){
         
-        suitability <- suitability + occurrence[[j]]
+        suitability <- suitability + occurrence[[i]]
 }}
 
 
@@ -46,33 +29,38 @@ suitability[which(suitability[] > 5 )] <- 5
 
 dir.create(paste0("output/sim_suitability/", now))
 
-writeRaster(suitability,
+raster::writeRaster(suitability,
             paste0("output/sim_suitability/", now,
-                   "/phy", i, "_suitability"),
+                   "/phy", 1, "_suitability"),
             format = "GTiff", overwrite=TRUE)
 
 
 ## assess connectivity
 
-dir.create(paste0("output/omniscape/ini_files/", now))
-dir.create(paste0("output/omniscape/output_maps/", now))
+dir.create(paste0("output/omniscape/", now))
+dir.create(paste0("output/omniscape/", now, "/ini_files"))
+dir.create(paste0("output/omniscape/", now, "/output_maps"))
 
 writeLines(paste0("resistance_file = ", getwd(),
-            "/output/sim_suitability/", now, "/phy", i, "_suitability.tif\n",
+            "/output/sim_suitability/", now, "/phy", 1, "_suitability.tif\n",
 "radius = 20
 block_size = 3
-project_name = ", getwd(), "/output/omniscape/output_maps/", now, "/phy", i, "_connectivity\n",
+project_name = ", getwd(), "/output/omniscape/", now, "/output_maps/phy", 1, "_connectivity\n",
 "source_from_resistance = true
 resistance_is_conductance = true
 calc_normalized_current = true
 calc_flow_potential = true
 parallelize = false
 write_raw_currmap = true"),
-            con = paste0("output/omniscape/ini_files/", now, "/phy", i, ".ini"), sep="\n")
+            con = paste0("output/omniscape/", now, "/ini_files/phy", 1, ".ini"), sep="\n")
 
 
-juliaUsing("Omniscape")
+XRJulia::juliaUsing("Omniscape")
 
-juliaCommand(paste0("run_omniscape(\"",
-                    getwd(),
-                    "/output/omniscape/ini_files/", now, "/phy", i, ".ini\"::String)"))
+XRJulia::juliaCommand(paste0("run_omniscape(\"",
+                             getwd(),
+                             "/output/omniscape/",
+                             now,
+                             "/ini_files/phy",
+                             1,
+                             ".ini\"::String)"))
