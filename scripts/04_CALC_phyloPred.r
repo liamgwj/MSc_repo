@@ -4,11 +4,35 @@
 
 # requires package 'picante'
 
-# environment must contain 'phy', 'char_known', 'now'
+
+# load simulated data ----------------------------------------------------
+
+# choose simulation ID
+
+now <- "2021-06-30_11:22:13"
 
 
-# phylogenetic prediction
-# Use ancestral state reconstruction to estimate missing trait values
+# read in all phylogenies associated with chosen ID
+
+phy_lst <- ape::read.tree(paste0("output/sim_phylogenies/", now, ".nwk"))
+
+# select one phylogeny to use for this round of ancestral state reconstruction
+
+j = 1
+
+phy <- phy_lst[[j]]
+
+
+# read in incomplete character state data corresponding to the selected phylogeny
+
+char_known <- read.csv(paste0("output/sim_hostStatus/", now, "/known",
+                              "/phy", j, "_charKnown.csv"),
+                       row.names = 1)
+
+
+# phylogenetic prediction ------------------------------------------------
+
+# use ancestral state reconstruction to estimate missing trait values
 
 char_estim <- picante::phyEstimateDisc(phy = phy,
                               trait = factor(as.data.frame(t(
@@ -17,7 +41,7 @@ char_estim <- picante::phyEstimateDisc(phy = phy,
                               cutoff = 0.5) # assign state with >50% support
 
 
-# compile list of all known and predicted hosts
+# combine known and estimated trait information
 
 char_all <- char_known
 
@@ -33,6 +57,8 @@ for(i in 1:nrow(char_all)){
 
 # write to file
 
+dir.create(paste0("output/CALC_charStates/", now))
+
 write.csv(char_all,
           paste0("output/CALC_charStates/", now,
-                 "_charEst.csv"))
+                 "/phy", j, "_charEst.csv"))

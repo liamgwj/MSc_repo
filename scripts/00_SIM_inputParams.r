@@ -36,7 +36,7 @@ params <- data.frame(
                 "max_nPatch" = 10,
                 "min_patchSize" = 10, # size of habitat patches
                 "max_patchSize" = 250,
-                "cooccurrence_pat" = "clustered" # co-occurrence pattern across taxa - one of "clustered", "random" or "dispersed"
+                "cooccurrence_pat" = "random" # co-occurrence pattern across taxa - one of "clustered", "random" or "dispersed"
  )
 
 
@@ -52,7 +52,9 @@ write.csv(params,
 # source component scripts in order (requires the ID and parameter objects present in the environment ('now' and 'params'))
 
 source("scripts/01_SIM_phylo.r")
+
 source("scripts/02_SIM_charEvol.r")
+
 source("scripts/03_SIM_geoDistr.r")
 
 
