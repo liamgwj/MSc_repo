@@ -6,7 +6,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE, purl=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, cache = T)
 ```
 
 to save as r script: knitr::purl("simulation.rmd", documentation=2)
@@ -23,8 +23,14 @@ LandscapeR documentation: https://cran.r-project.org/web/packages/landscapeR/vig
 Omniscape documentation: https://docs.circuitscape.org/Omniscape.jl/stable/
 
 
-
 # Setup
+
+## Julia & Omniscape
+
+Julia needs to be [installed locally](https://julialang.org/downloads/) first, then using Julia one can [install Omniscape](https://github.com/Circuitscape/Omniscape.jl#installation).
+
+Julia also needs to be "findable" for executing, and for this, follow instructions at this [webpage](https://julialang.org/downloads/platform/).
+
 
 ## Load packages
 ```{r load_packages, message=FALSE}
@@ -90,7 +96,7 @@ for(i in 1:nrow(input_params)){
 ## Simulate host phylogeny
 
 Simulate the phylogeny (output is a list, in this case containing only one phylogeny)
-```{r sim_phylo, fig.width = 6, fig.height = 6}
+```{r sim_phylo1, fig.width = 6, fig.height = 6}
 host_phy_lst <- sim.bd.taxa(n = 20, # number of tips on each phylogeny
                             numbsim = 1, # number of phylogenies
                             lambda = 0.2, # speciation rate
@@ -159,7 +165,7 @@ For every tip on the phylogeny, simulate a raster map representing the species' 
 ### Simple simulation of random patchy distributions
 
 Create empty rasters for all species
-```{r create_species_rasters}
+```{r create_species_rasters2}
 occurrence <- vector("list", length = length(host_phy$tip.label)) # create a list to hold the rasters
 names(occurrence) <- host_phy$tip.label # assign each item a tip name
 
@@ -283,7 +289,7 @@ plot(host_phy, tip.color = tipcol_traits_estimate$tipcol)
 For now, we'll consider cell suitability to be equivalent to the number of compatible hosts present in each cell, calculated by summing the host rasters.
 
 Calculate habitat suitability (true hosts)
-```{r calc_suitability_true}
+```{r calc_suitability_true1}
 host_occurrence <- occurrence[host_indexes] # select only compatible host rasters
 
 host_sum <- empty_raster
@@ -299,7 +305,7 @@ host_sum_capped[which(host_sum_capped[] > 4)] <- 4 # set all values > 4 to 4 -- 
 
 Write suitability map to file
 
-```{r write_suitability_true, warning=FALSE}
+```{r write_suitability_true1, warning=FALSE}
 writeRaster(host_sum_capped, "omniscape/true_host_map", format = "GTiff", overwrite=TRUE)
 ```
 
@@ -403,7 +409,8 @@ if(file.exists("omniscape/predicted_host")){
     unlink("omniscape/predicted_host", recursive = TRUE)}
 ```
 
-```{r julia_connectivity_true}
+Make sure the ".ini" files use relative paths
+```{r julia_connectivity_true2}
 juliaUsing("Omniscape")
 
 juliaCommand(
@@ -517,7 +524,7 @@ for(i in 1:nrow(input_params)){
 
 
 Simulate host phylogenies
-```{r sim_phylo, fig.width = 6, fig.height = 6}
+```{r sim_phylo2, fig.width = 6, fig.height = 6}
 host_phy_lst <- sim.bd.taxa(n = 20, # number of tips on each phylogeny
                             numbsim = 10, # number of phylogenies
                             lambda = 0.2, # speciation rate
@@ -544,7 +551,7 @@ for(i in 1:length(host_phy_lst)){
 ```
 
 Simulate geographic distributions for each tip
-```{r create_species_rasters}
+```{r create_species_rasters1}
 occurrence <- vector("list", length(host_phy_lst))
 
 for(i in 1:length(occurrence)){
@@ -658,7 +665,7 @@ for(i in 1:length(host_names_lst)){
 For now, we'll consider cell suitability to be equivalent to the number of compatible hosts present in each cell, calculated by summing the host rasters.
 
 Calculate habitat suitability
-```{r calc_suitability_true}
+```{r calc_suitability_true2}
 num_hosts <- vector("list", length(host_phy_lst))
 
 for(i in 1:length(num_hosts)){
@@ -678,7 +685,7 @@ for(i in 1:length(suitability)){
 ```
 
 Write suitability map to file
-```{r write_suitability_true, warning=FALSE}
+```{r write_suitability_true2, warning=FALSE}
 for(i in 1:length(host_phy_lst)){
     
     writeRaster(num_hosts[[i]],
@@ -694,7 +701,7 @@ for(i in 1:length(host_phy_lst)){
 ```
 
 ## assess connectivity
-```{r julia_connectivity_true}
+```{r julia_connectivity_true1}
 
 for(i in 1:length(host_phy_lst)){
 
