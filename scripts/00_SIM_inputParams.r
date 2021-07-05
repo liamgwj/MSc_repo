@@ -49,6 +49,25 @@ write.csv(params,
 
 # run simulations --------------------------------------------------------
 
+# check that output directories exist, creating them if necessary
+
+if(!dir.exists("output")){
+    dir.create("output")
+}
+
+if(!dir.exists("output/sim_phylogenies")){
+    dir.create("output/sim_phylogenies")
+}
+
+if(!dir.exists("output/sim_hostStatus")){
+    dir.create("output/sim_hostStatus")
+}
+
+if(!dir.exists("output/sim_occurrence")){
+    dir.create("output/sim_occurrence")
+}
+
+
 # source component scripts in order (requires the ID and parameter objects present in the environment ('now' and 'params'))
 
 source("scripts/01_SIM_phylo.r")

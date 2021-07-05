@@ -57,6 +57,10 @@ for(i in 1:nrow(char_all)){
 
 # write to file
 
+if(!dir.exists("output/CALC_charStates")){
+    dir.create("output/CALC_charStates")
+}
+
 dir.create(paste0("output/CALC_charStates/", now))
 
 write.csv(char_all,

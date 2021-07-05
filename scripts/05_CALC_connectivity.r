@@ -73,6 +73,10 @@ suitability[which(suitability[] > 5 )] <- 5
 
 # write suitability map to file
 
+if(!dir.exists("output/sim_suitability")){
+    dir.create("output/sim_suitability")
+}
+
 dir.create(paste0("output/sim_suitability/", now))
 
 
@@ -85,6 +89,10 @@ raster::writeRaster(suitability,
 # calculate habitat connectivity
 
 # create directories for omniscape run
+
+if(!dir.exists("output/omniscape")){
+    dir.create("output/omniscape")
+}
 
 dir.create(paste0("output/omniscape/", now))
 
