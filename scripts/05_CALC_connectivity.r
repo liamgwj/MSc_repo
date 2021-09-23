@@ -9,7 +9,7 @@
 
 # choose simulation ID
 
-now <- "2021-06-30_11:22:13"
+# now <- "2021-06-30_11:22:13"
 
 
 # choose a phylogeny associated with chosen ID
@@ -19,9 +19,13 @@ j = 1
 
 # read in character state data associated with chosen ID and phylogeny
 
-char <- read.csv(paste0("output/CALC_charStates/", now,
-                        "/phy", j, "_charEst.csv"),
+char <- read.csv(paste0("output/sim_hostStatus/", now, "/known",
+                        "/phy", j, "_charKnown.csv"),
                  row.names = 1)
+
+# char <- read.csv(paste0("output/CALC_charStates/", now,
+#                        "/phy", j, "_charEst.csv"),
+#                 row.names = 1)
 
 
 # subset to only host taxa
@@ -107,7 +111,7 @@ writeLines(paste(paste0("resistance_file = ", getwd(),
                         "/output/sim_suitability/", now,
                         "/phy", j, "_suitability.tif"),
                  "radius = 20",
-                 "block_size = 3",
+                 "block_size = 1",
                  paste0("project_name = ", getwd(),
                         "/output/omniscape/", now,
                         "/output_maps/phy", j, "_connectivity"),
@@ -131,3 +135,31 @@ XRJulia::juliaCommand(paste0("run_omniscape(\"", getwd(),
                              "/output/omniscape/", now,
                              "/ini_files/phy", j,
                              ".ini\"::String)"))
+
+
+# inspect output
+
+raster::plot(suitability)
+
+cum_currmap <- raster::raster(paste0("output/omniscape/",
+                                     now, "/output_maps",
+                                     "/phy", j, 
+                                     "_connectivity/cum_currmap.tif"))
+
+raster::plot(cum_currmap)
+
+
+normalized_cum_currmap <- raster::raster(paste0("output/omniscape/",
+                                     now, "/output_maps",
+                                     "/phy", j, 
+                                     "_connectivity/normalized_cum_currmap.tif"))
+
+raster::plot(normalized_cum_currmap)
+
+
+flow_potential <- raster::raster(paste0("output/omniscape/",
+                                     now, "/output_maps",
+                                     "/phy", j, 
+                                     "_connectivity/flow_potential.tif"))
+
+raster::plot(flow_potential)
