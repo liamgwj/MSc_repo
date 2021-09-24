@@ -1,31 +1,15 @@
-# LJ started: 2021-06-25 last updated: 2021-09-22
+# LJ started: 2021-06-25 last updated: 2021-09-24
 
 # Simulate a presence/absence occurrence raster for each tip on the provided
-# phylogenies.
+# phylogeny/ies
 
-# requires packages 'ape', 'raster', 'landscapeR'
-
-# optional setup --------------------------------------------------------------
-
-# if desired, specify the date/time ID to use and read in the corresponding
-# parameter file - when sourcing this script from '00_SIM_params_source.r' the
-# ID and parameter objects present in the environment will be used
-
-# set ID
-
-# now <- "YYYY-MM-DDThh:mm:ss"
+# requires packages 'ape', 'raster', 'landscapeR' to be installed
 
 
-# read in input parameters
+# read in phylogeny/ies -------------------------------------------------------
 
-# params <- read.csv(paste0("output/SIM_parameters/", now, "_params.csv"))
-
-
-# simulation ------------------------------------------------------------------
-
-# read in phylogeny/ies
-
-phy_tmp <- ape::read.tree(paste0("output/sim_phylogenies/", now, ".nwk"))
+phy_tmp <- ape::read.tree(paste0("output/simulations/", now, "/",
+                                 "phylogenies_", now, ".nwk"))
 
 
 # check if single phylogeny or multiple
@@ -44,7 +28,7 @@ if(class(phy_tmp) == "phylo"){
     }}
 
 
-# create empty raster with specified dimensions
+# create empty raster with specified dimensions -------------------------------
 
 empty_raster <- raster::raster(matrix(0, params$land_dim_x,
                                       params$land_dim_y),
@@ -55,8 +39,6 @@ empty_raster <- raster::raster(matrix(0, params$land_dim_x,
 # single phylogeny ------------------------------------------------------------
 
 if(exists("phy")){
-
-    # simulate geographic distributions for each tip
     
     # pre-allocate list to hold rasters
     
@@ -65,8 +47,7 @@ if(exists("phy")){
     names(occurrence) <- phy$tip.label
     
     
-    # simulate distributions --------------------------------------------------
-    
+    # simulate geographic distributions for each tip---------------------------
     
     # set seed locations for habitat patches - total of (max no. patches per
     # taxon) * (total no. taxa) patches, allowing patches to be completely
@@ -125,12 +106,31 @@ if(exists("phy")){
     }
 }
 
+## 
+# incorporate varied densities:
+
+# empty_raster <- raster::raster(matrix(1, params$land_dim_x,
+#                                       params$land_dim_y),
+#                                xmn = 0, xmx = 10,
+#                                ymn = 0, ymx = 10)
+# 
+# 
+# occurrence <- landscapeR::makeClass(empty_raster,
+#                                     npatch = 3,
+#                                     size = 5,
+#                                     pts = NULL,
+#                                     bgr = 1,
+#                                     edge = FALSE,
+#                                     rast = TRUE,
+#                                     val = sample(1:10, 1))
+# 
+# raster::plot(occurrence)
+
+##
 
 # multiple phylogenies --------------------------------------------------------
 
 if(exists("phy_lst")){
-    
-    # simulate geographic distributions for each tip
     
     # pre-allocate lists to hold rasters
     
@@ -145,15 +145,7 @@ if(exists("phy_lst")){
     }
     
     
-    # create empty raster with specified dimensions
-    
-    empty_raster <- raster::raster(matrix(0, params$land_dim_x,
-                                          params$land_dim_y),
-                                   xmn = 0, xmx = 10,
-                                   ymn = 0, ymx = 10)
-    
-    
-    # simulate distributions --------------------------------------------------
+    # simulate geographic distributions for each tip---------------------------
     
     for(i in 1:length(occurrence)){
         
@@ -210,30 +202,57 @@ if(exists("phy_lst")){
     }
 }
 
+
+# check for output directories, creating them if necessary --------------------
+
+if(!dir.exists("output")){
+    dir.create("output")
+}
+
+if(!dir.exists("output/simulations")){
+    dir.create("output/simulations")
+}
+
+if(!dir.exists(paste0("output/simulations/", now))){
+    dir.create(paste0("output/simulations/", now))
+}
+
+if(!dir.exists(paste0("output/simulations/", now, "/occurrence"))){
+    dir.create(paste0("output/simulations/", now, "/occurrence"))
+}
+
+
 # write rasters to file -------------------------------------------------------
 
-dir.create(paste0("output/sim_occurrence/", now))
-
+# single phylogeny
 
 if(exists("phy")){
     
-    dir.create(paste0("output/sim_occurrence/", now, "/phy1"))
+    if(!dir.exists(paste0("output/simulations/", now, "/occurrence/phy0"))){
+        dir.create(paste0("output/simulations/", now, "/occurrence/phy0"))
+    }
     
     for(i in 1:length(phy$tip.label)){
     
     raster::writeRaster(occurrence[[i]],
-                        paste0("output/sim_occurrence/", now, "/phy1/",
-                               phy$tip.label[i], "_occurrence"),
+                        paste0("output/simulations/", now, "/occurrence/phy0/",
+                              "occurrence_phy0-", phy0$tip.label[i], "_", now),
                         format = "GTiff")
     }
 }
 
 
+# multiple phylogenies
+
 if(exists("phy_lst")){
     
     for(i in 1:length(phy_lst)){
         
-        dir.create(paste0("output/sim_occurrence/", now, "/phy", i))
+        if(!dir.exists(paste0("output/simulations/", now,
+                              "/occurrence/phy", i))){
+            dir.create(paste0("output/simulations/", now,
+                              "/occurrence/phy", i))
+        }
     }
     
     for(i in 1:length(phy_lst)){
@@ -241,9 +260,10 @@ if(exists("phy_lst")){
         for(j in 1:length(phy_lst[[i]]$tip.label)){
             
             raster::writeRaster(occurrence[[i]][[j]],
-                                paste0("output/sim_occurrence/", now, "/phy",
-                                       i, "/", phy_lst[[i]]$tip.label[j],
-                                       "_occurrence"),
+                                paste0("output/simulations/", now,
+                                       "/occurrence/phy", i, "/occurrence_phy",
+                                       i, "-", phy_lst[[i]]$tip.label[j], "_",
+                                       now),
                                 format = "GTiff")
         }
     }

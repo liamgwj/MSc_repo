@@ -1,4 +1,6 @@
-# LJ started: 2021-06-28 last updated: 2021-09-22
+# LJ started: 2021-06-28 last updated: 2021-09-24
+
+## SUPPORT FOR CONTINUOUS CHARACTERS NOT COMPLETE ##
 
 # This is the central simulation script - here, we will set the parameters for
 # the simulation run, then source the additional scripts (01-03) that carry out
@@ -24,13 +26,13 @@ params <- data.frame(
                 "ID" = now,
                 
                 # phylogeny (01) ----------------------------------------------
-                "nTips" = 16, # number of extant taxa per phylogeny
-                "nPhy" = 1, # number of phylogenies to simulate
+                "nTips" = 12, # number of extant taxa per phylogeny
+                "nPhy" = 3, # number of phylogenies to simulate
                 "lambda" = 0.2, # speciation rate
                 "mu" = 0.1, # extinction rate
                 
                 # character states (02) ---------------------------------------
-                "trait_type" = "continuous", # "discrete" or "continuous"
+                "trait_type" = "discrete", # "discrete" or "continuous"
                 "prop_missing" = 0.2, # proportion of taxa whose trait values
                 # should be removed to test phylogenetic prediction
                 "root_value" = 1, # initially non-host
@@ -46,47 +48,41 @@ params <- data.frame(
                 "theta" = 0,
                 
                 # geographic distributions (03) -------------------------------
-                "land_dim_x" = 20, # dimensions of simulated landscape
-                "land_dim_y" = 20,
-                "min_nPatch" = 1, # number of habitat patches per taxon
-                "max_nPatch" = 1,
-                "min_patchSize" = 1, # size of habitat patches
-                "max_patchSize" = 1,
-                "cooccurrence_pat" = "clustered" # co-occurrence pattern across
+                "land_dim_x" = 1000, # dimensions of simulated landscape
+                "land_dim_y" = 1000,
+                "min_nPatch" = 2, # number of habitat patches per taxon
+                "max_nPatch" = 20,
+                "min_patchSize" = 4, # size of habitat patches
+                "max_patchSize" = 12,
+                "cooccurrence_pat" = "random" # co-occurrence pattern across
                 # taxa - one of "clustered", "random" or "dispersed"
  )
 
 
-# write parameters to file ----------------------------------------------------
-
-write.csv(params,
-          paste0("output/SIM_parameters/", now, "_params.csv"),
-          row.names = FALSE)
-
-
-# run simulations -------------------------------------------------------------
-
-# check that output directories exist, creating them if necessary
+# check for output directories, creating them if necessary --------------------
 
 if(!dir.exists("output")){
     dir.create("output")
 }
 
-if(!dir.exists("output/sim_phylogenies")){
-    dir.create("output/sim_phylogenies")
+if(!dir.exists("output/simulations")){
+    dir.create("output/simulations")
 }
 
-if(!dir.exists("output/sim_hostStatus")){
-    dir.create("output/sim_hostStatus")
-}
-
-if(!dir.exists("output/sim_occurrence")){
-    dir.create("output/sim_occurrence")
+if(!dir.exists(paste0("output/simulations/", now))){
+    dir.create(paste0("output/simulations/", now))
 }
 
 
-# source component scripts in order (requires the ID and parameter objects
-# present in the environment ('now' and 'params'))
+# write parameters to file ----------------------------------------------------
+
+write.csv(params,
+          paste0("output/simulations/", now, "/",
+                 "parameters_", now, ".csv"),
+          row.names = FALSE)
+
+
+# source simulation scripts ---------------------------------------------------
 
 source("scripts/01_SIM_phylo.r")
 

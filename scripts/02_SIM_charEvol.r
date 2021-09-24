@@ -1,31 +1,18 @@
-# LJ started: 2021-06-25 last updated: 2021-09-22
+# LJ started: 2021-06-25 last updated: 2021-09-24
 
-# Simulate evolution of a discrete binary character on a set of provided
-# phylogenies, then sample a subset of this character information.
+# Simulate evolution of either a discrete binary character or a continuous
+# character on a set of provided phylogenies, then sample a subset of this
+# character information.
 
-# requires package 'ape'
+# requires objects 'params' (parameter master) and 'now' (unique date/time ID)
 
-# optional setup --------------------------------------------------------------
-
-# if desired, specify the date/time ID to use and read in the corresponding
-# parameter file - when sourcing this script from '00_SIM_params_source.r' the
-# ID and parameter objects present in the environment will be used
-
-# set ID
-
-# now <- "YYYY-MM-DDThh:mm:ss"
+# requires package 'ape' to be installed
 
 
-# read in input parameters
+# read in phylogeny/ies -------------------------------------------------------
 
-# params <- read.csv(paste0("output/SIM_parameters/", now, "_params.csv"))
-
-
-# simulation ------------------------------------------------------------------
-
-# read in phylogeny/ies
-
-phy_tmp <- ape::read.tree(paste0("output/sim_phylogenies/", now, ".nwk"))
+phy_tmp <- ape::read.tree(paste0("output/simulations/", now, "/",
+                                 "phylogenies_", now, ".nwk"))
 
 
 # check if single phylogeny or multiple
@@ -44,7 +31,7 @@ print("Error: not a phylo or multiPhylo object")
 }}
 
 
-# discrete trait --------------------------------------------------------------
+# discrete character ----------------------------------------------------------
 
 if(params$trait_type == "discrete"){
     
@@ -52,9 +39,9 @@ if(params$trait_type == "discrete"){
     
     if(exists("phy")){
         
-        char_complete <- vector(length(phy$tip.label))
+        # simulate character evolution
         
-        char_complete[i] <- ape::rTraitDisc(phy = phy,
+        char_complete <- ape::rTraitDisc(phy = phy,
                                             model = params$disc_model,
                                             k = 2, # no. character states
                                             rate = params$trait_rate,
@@ -84,8 +71,11 @@ if(params$trait_type == "discrete"){
     
     if(exists("phy_lst")){
         
+        # pre-allocate list for output
+        
         char_lst_complete <- vector("list", length(phy_lst))
         
+        # simulate character evolution
         
         for(i in 1:length(phy_lst)){
             char_lst_complete[[i]] <- ape::rTraitDisc(phy = phy_lst[[i]],
@@ -102,9 +92,7 @@ if(params$trait_type == "discrete"){
         }
         
         
-        # simulate incomplete host data by randomly removing a subset of the
-        # complete character information (proportion removed is set in
-        # simulation parameters)
+        # simulate incomplete host data
         
         char_lst_known <- char_lst_complete
         
@@ -122,13 +110,15 @@ if(params$trait_type == "discrete"){
 }
 
 
-# continuous trait ------------------------------------------------------------
+# continuous character --------------------------------------------------------
 
 if(params$trait_type == "continuous"){
 
-# single phylogeny ------------------------------------------------------------
+    # single phylogeny --------------------------------------------------------
     
     if(exists("phy")){
+        
+        # simulate character evolution
         
         char_complete <- ape::rTraitCont(phy = phy,
                                          model = params$cont_model,
@@ -139,9 +129,7 @@ if(params$trait_type == "continuous"){
                                          root.value = params$root_value)
         
         
-        # simulate incomplete host data by randomly removing a subset of the
-        # complete character information (proportion removed is set in
-        # simulation parameters)
+        # simulate incomplete host data
         
         char_known <- char_complete
         
@@ -154,12 +142,15 @@ if(params$trait_type == "continuous"){
     }
     
     
-# multiple phylogenies --------------------------------------------------------
+    # multiple phylogenies ----------------------------------------------------
     
     if(exists("phy_lst")){
         
+        # pre-allocate list for output
+        
         char_lst_complete <- vector("list", length(phy_lst))
         
+        # simulate character evolution
         
         for(i in 1:length(phy_lst)){
             char_lst_complete[[i]] <- ape::rTraitCont(phy = phy_lst[[i]],
@@ -172,9 +163,7 @@ if(params$trait_type == "continuous"){
         }
         
         
-        # simulate incomplete host data by randomly removing a subset of the
-        # complete character information (proportion removed is set in
-        # simulation parameters)
+        # simulate incomplete host data
         
         char_lst_known <- char_lst_complete
         
@@ -193,37 +182,71 @@ if(params$trait_type == "continuous"){
 }
 
 
+# check for output directories, creating them if necessary --------------------
+
+if(!dir.exists("output")){
+    dir.create("output")
+}
+
+if(!dir.exists("output/simulations")){
+    dir.create("output/simulations")
+}
+
+if(!dir.exists(paste0("output/simulations/", now))){
+    dir.create(paste0("output/simulations/", now))
+}
+
+if(!dir.exists(paste0("output/simulations/", now, "/character-states"))){
+    dir.create(paste0("output/simulations/", now, "/character-states"))
+}
+
+if(!dir.exists(paste0("output/simulations/", now,
+                      "/character-states/complete"))){
+    dir.create(paste0("output/simulations/", now,
+                      "/character-states/complete"))
+}
+
+if(!dir.exists(paste0("output/simulations/", now,
+                      "/character-states/known"))){
+    dir.create(paste0("output/simulations/", now,
+                      "/character-states/known"))
+}
+
+
 # write character states to file ----------------------------------------------
 
-dir.create(paste0("output/sim_hostStatus/", now))
-dir.create(paste0("output/sim_hostStatus/", now, "/complete"))
-dir.create(paste0("output/sim_hostStatus/", now, "/known"))
+# single phylogeny
 
+if(exists("phy")){
+    
+    write.csv(char_complete,
+              paste0("output/simulations/", now,
+                     "/character-states/complete/",
+                     "charComplete_phy0_", now, ".csv"))
+    
+    write.csv(char_known,
+              paste0("output/simulations/", now,
+                     "/character-states/known/",
+                     "charKnown_phy0_", now, ".csv"))
+}
+
+
+# multiple phylogenies
 
 if(exists("phy_lst")){
     
     for(i in 1:length(phy_lst)){
     
         write.csv(data.frame(hostStatus = char_lst_complete[[i]]),
-                  paste0("output/sim_hostStatus/", now, "/complete",
-                         "/phy", i, "_charComplete.csv"))
+                  paste0("output/simulations/", now,
+                         "/character-states/complete/",
+                         "charComplete_", "phy", i, "_", now, ".csv"))
     
         write.csv(data.frame(hostStatus = char_lst_known[[i]]),
-                  paste0("output/sim_hostStatus/", now, "/known",
-                         "/phy", i, "_charKnown.csv"))
+                  paste0("output/simulations/", now,
+                         "/character-states/known/",
+                         "charKnown_", "phy", i, "_", now, ".csv"))
     }
-}
-
-
-if(exists("phy")){
-    
-    write.csv(char_complete,
-              paste0("output/sim_hostStatus/", now,
-                     "/complete/phy_charComplete.csv"))
-    
-    write.csv(char_known,
-              paste0("output/sim_hostStatus/", now,
-                     "/known/phy_charKnown.csv"))
 }
 
 

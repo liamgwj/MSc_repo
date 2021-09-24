@@ -1,15 +1,20 @@
-# LJ 2021-06-25
+# LJ started: 2021-06-25 last updated: 2021-09-24
+
+## NEEDS:
+## add looping structure to allow for multiple phylogenies (maybe a different script to call this one?)
+## play with omniscape parameters for dispersal
+
 
 # Calculate habitat suitability and connectivity based on available hosts.
 
 # requires packages 'raster', 'XRJulia'
 
 
-# load simulated data ----------------------------------------------------
+# load simulated data ---------------------------------------------------------
 
 # choose simulation ID
 
-# now <- "2021-06-30_11:22:13"
+# now <- "YYYY-MM-DDThh:mm:ss"
 
 
 # choose a phylogeny associated with chosen ID
@@ -47,7 +52,7 @@ for(i in 1:nrow(hosts)){
 }
 
 
-# calculate habitat area and connectivity -------------------------------
+# calculate habitat area and connectivity -------------------------------------
 
 # for now, we'll consider cell suitability to be equivalent to the number of compatible hosts present in the cell, up to a maximum value of 4
 
