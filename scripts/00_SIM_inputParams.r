@@ -1,4 +1,4 @@
-# LJ started: 2021-06-28 last updated: 2021-09-24
+# LJ started: 2021-06-28 last updated: 2021-10-04
 
 ## SUPPORT FOR CONTINUOUS CHARACTERS NOT COMPLETE ##
 
@@ -54,8 +54,9 @@ params <- data.frame(
                 "max_nPatch" = 20,
                 "min_patchSize" = 4, # size of habitat patches
                 "max_patchSize" = 12,
-                "cooccurrence_pat" = "random" # co-occurrence pattern across
+                "cooccurrence_pat" = "random"#, # co-occurrence pattern across
                 # taxa - one of "clustered", "random" or "dispersed"
+                #"density" = c(2:8) add functionality - what levels of density are interesting?
  )
 
 

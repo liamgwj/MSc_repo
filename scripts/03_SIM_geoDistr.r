@@ -1,4 +1,4 @@
-# LJ started: 2021-06-25 last updated: 2021-09-24
+# LJ started: 2021-06-25 last updated: 2021-10-04
 
 # Simulate a presence/absence occurrence raster for each tip on the provided
 # phylogeny/ies
@@ -30,7 +30,7 @@ if(class(phy_tmp) == "phylo"){
 
 # create empty raster with specified dimensions -------------------------------
 
-empty_raster <- raster::raster(matrix(0, params$land_dim_x,
+empty_raster <- raster::raster(matrix(1, params$land_dim_x,
                                       params$land_dim_y),
                                xmn = 0, xmx = 10,
                                ymn = 0, ymx = 10)
@@ -97,36 +97,22 @@ if(exists("phy")){
                                    (((i-1) * params$max_nPatch) + np)]}}
         
         
+        # set species-specific density value
+        
+        density_tmp <- sample(c(2:8), 1)
+        
+        
         # assign presence/absence
         
         occurrence[[i]] <- landscapeR::makeClass(empty_raster,
                                                  npatch = np,
                                                  size = sz,
-                                                 pts = seed_loc_subset)
+                                                 pts = seed_loc_subset,
+                                                 bgr = 1,
+                                                 val = density_tmp)
     }
 }
 
-## 
-# incorporate varied densities:
-
-# empty_raster <- raster::raster(matrix(1, params$land_dim_x,
-#                                       params$land_dim_y),
-#                                xmn = 0, xmx = 10,
-#                                ymn = 0, ymx = 10)
-# 
-# 
-# occurrence <- landscapeR::makeClass(empty_raster,
-#                                     npatch = 3,
-#                                     size = 5,
-#                                     pts = NULL,
-#                                     bgr = 1,
-#                                     edge = FALSE,
-#                                     rast = TRUE,
-#                                     val = sample(1:10, 1))
-# 
-# raster::plot(occurrence)
-
-##
 
 # multiple phylogenies --------------------------------------------------------
 
@@ -192,12 +178,19 @@ if(exists("phy_lst")){
                                        (((j-1) * params$max_nPatch) + np)]}}
             
             
+            # set species-specific density value
+            
+            density_tmp <- sample(c(2:8), 1)
+            
+            
             # assign presence/absence
             
             occurrence[[i]][[j]] <- landscapeR::makeClass(empty_raster,
                                                           npatch = np,
                                                           size = sz,
-                                                         pts = seed_loc_subset)
+                                                         pts = seed_loc_subset,
+                                                          bgr = 1,
+                                                          val = density_tmp)
         }
     }
 }
