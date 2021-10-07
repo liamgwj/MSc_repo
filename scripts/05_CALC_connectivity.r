@@ -1,4 +1,8 @@
-# LJ started: 2021-06-25 last updated: 2021-09-24
+# LJ started: 2021-06-25 last updated: 2021-10-06
+
+# something isn't right about the current calculation - flow does not seem to accumulate in the narrower gaps between patches but instead is spread more or less evenly across the background. Probably something in the omniscape parameters to fix this but need to investigate.
+
+
 
 ## NEEDS:
 ## add looping structure to allow for multiple phylogenies (maybe a different script to call this one?)
@@ -19,14 +23,15 @@
 
 # choose a phylogeny associated with chosen ID
 
-j = 1
+j = 0
 
 
 # read in character state data associated with chosen ID and phylogeny
 
-char <- read.csv(paste0("output/sim_hostStatus/", now, "/known",
-                        "/phy", j, "_charKnown.csv"),
-                 row.names = 1)
+char <- read.csv(paste0("output/simulations/", now,
+                        "/character-states/complete/",
+                        "charComplete_phy", j, "_", now, ".csv"))
+
 
 # char <- read.csv(paste0("output/CALC_charStates/", now,
 #                        "/phy", j, "_charEst.csv"),
@@ -35,7 +40,7 @@ char <- read.csv(paste0("output/sim_hostStatus/", now, "/known",
 
 # subset to only host taxa
 
-hosts <- subset(char, hostStatus == "Host")
+hosts <- subset(char, x == "Host")
 
 
 # read in host occurrence rasters
@@ -45,10 +50,10 @@ occurrence <- vector("list", nrow(hosts))
 
 for(i in 1:nrow(hosts)){
     
-    occurrence[[i]] <- raster::raster(paste0("output/sim_occurrence/",
-                                             now, "/phy", j, "/",
-                                             rownames(hosts)[i],
-                                             "_occurrence.tif"))
+    occurrence[[i]] <- raster::raster(paste0("output/simulations/", now,
+                                             "/occurrence/phy", j, "/",
+                                             "occurrence_phy", j, "-t", i,
+                                             "_", now, ".tif"))
 }
 
 
@@ -115,16 +120,18 @@ dir.create(paste0("output/omniscape/", now, "/output_maps"))
 writeLines(paste(paste0("resistance_file = ", getwd(),
                         "/output/sim_suitability/", now,
                         "/phy", j, "_suitability.tif"),
-                 "radius = 20",
-                 "block_size = 1",
+                 "radius = 30",
+                 "block_size = 3",
                  paste0("project_name = ", getwd(),
                         "/output/omniscape/", now,
                         "/output_maps/phy", j, "_connectivity"),
                  "source_from_resistance = true",
+                 # "r_cutoff =5",
+                 "source_threshold = 2", 
                  "resistance_is_conductance = true",
                  "calc_normalized_current = true",
                  "calc_flow_potential = true",
-                 "parallelize = false",
+                 "parallelize = true",
                  "write_raw_currmap = true",
                  sep = "\n"),
            con = paste0("output/omniscape/", now,
@@ -144,7 +151,7 @@ XRJulia::juliaCommand(paste0("run_omniscape(\"", getwd(),
 
 # inspect output
 
-raster::plot(suitability)
+raster::plot(suitability, ylim=c(0,10), xlim=c(0,10))
 
 cum_currmap <- raster::raster(paste0("output/omniscape/",
                                      now, "/output_maps",

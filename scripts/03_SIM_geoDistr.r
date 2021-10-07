@@ -229,7 +229,7 @@ if(exists("phy")){
     
     raster::writeRaster(occurrence[[i]],
                         paste0("output/simulations/", now, "/occurrence/phy0/",
-                              "occurrence_phy0-", phy0$tip.label[i], "_", now),
+                              "occurrence_phy0-", phy$tip.label[i], "_", now),
                         format = "GTiff")
     }
 }

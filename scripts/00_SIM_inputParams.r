@@ -26,8 +26,8 @@ params <- data.frame(
                 "ID" = now,
                 
                 # phylogeny (01) ----------------------------------------------
-                "nTips" = 12, # number of extant taxa per phylogeny
-                "nPhy" = 3, # number of phylogenies to simulate
+                "nTips" = 16, # number of extant taxa per phylogeny
+                "nPhy" = 1, # number of phylogenies to simulate
                 "lambda" = 0.2, # speciation rate
                 "mu" = 0.1, # extinction rate
                 
@@ -50,10 +50,10 @@ params <- data.frame(
                 # geographic distributions (03) -------------------------------
                 "land_dim_x" = 1000, # dimensions of simulated landscape
                 "land_dim_y" = 1000,
-                "min_nPatch" = 2, # number of habitat patches per taxon
-                "max_nPatch" = 20,
-                "min_patchSize" = 4, # size of habitat patches
-                "max_patchSize" = 12,
+                "min_nPatch" = 1, # number of habitat patches per taxon
+                "max_nPatch" = 5,
+                "min_patchSize" = 1000, # size of habitat patches
+                "max_patchSize" = 1000,
                 "cooccurrence_pat" = "random"#, # co-occurrence pattern across
                 # taxa - one of "clustered", "random" or "dispersed"
                 #"density" = c(2:8) add functionality - what levels of density are interesting?

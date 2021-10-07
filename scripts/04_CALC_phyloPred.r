@@ -9,7 +9,7 @@
 
 # choose simulation ID
 
-now <- "2021-06-30_11:22:13"
+# now <- "2021-06-30_11:22:13"
 
 
 # read in all phylogenies associated with chosen ID
