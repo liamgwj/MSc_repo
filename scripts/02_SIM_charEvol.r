@@ -188,8 +188,8 @@ if(!dir.exists("output")){
     dir.create("output")
 }
 
-if(!dir.exists("output/", now)){
-    dir.create("output/", now)
+if(!dir.exists(paste0("output/", now))){
+    dir.create(paste0("output/", now))
 }
 
 if(!dir.exists(paste0("output/", now, "/character-states"))){

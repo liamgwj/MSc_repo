@@ -25,7 +25,7 @@ params <- data.frame(
                 
                 # phylogeny (01) ----------------------------------------------
                 "nTips" = 30, # number of extant taxa per phylogeny
-                "nPhy" = 1, # number of phylogenies to simulate
+                "nPhy" = 3, # number of phylogenies to simulate
                 "lambda" = 0.2, # speciation rate
                 "mu" = 0.1, # extinction rate
                 
@@ -64,8 +64,8 @@ if(!dir.exists("output")){
     dir.create("output")
 }
 
-if(!dir.exists("output/", now)){
-    dir.create("output/", now)
+if(!dir.exists(paste0("output/", now))){
+    dir.create(paste0("output/", now))
 }
 
 
