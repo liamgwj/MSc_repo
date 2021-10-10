@@ -1,4 +1,4 @@
-# LJ started: 2021-06-25 last updated: 2021-10-04
+# LJ started: 2021-06-25 last updated: 2021-10-10
 
 # Simulate a presence/absence occurrence raster for each tip on the provided
 # phylogeny/ies
@@ -8,7 +8,7 @@
 
 # read in phylogeny/ies -------------------------------------------------------
 
-phy_tmp <- ape::read.tree(paste0("output/simulations/", now, "/",
+phy_tmp <- ape::read.tree(paste0("output/", now, "/",
                                  "phylogenies_", now, ".nwk"))
 
 
@@ -202,16 +202,12 @@ if(!dir.exists("output")){
     dir.create("output")
 }
 
-if(!dir.exists("output/simulations")){
-    dir.create("output/simulations")
+if(!dir.exists(paste0("output/", now))){
+    dir.create(paste0("output/", now))
 }
 
-if(!dir.exists(paste0("output/simulations/", now))){
-    dir.create(paste0("output/simulations/", now))
-}
-
-if(!dir.exists(paste0("output/simulations/", now, "/occurrence"))){
-    dir.create(paste0("output/simulations/", now, "/occurrence"))
+if(!dir.exists(paste0("output/", now, "/occurrence"))){
+    dir.create(paste0("output/", now, "/occurrence"))
 }
 
 
@@ -221,14 +217,14 @@ if(!dir.exists(paste0("output/simulations/", now, "/occurrence"))){
 
 if(exists("phy")){
     
-    if(!dir.exists(paste0("output/simulations/", now, "/occurrence/phy0"))){
-        dir.create(paste0("output/simulations/", now, "/occurrence/phy0"))
+    if(!dir.exists(paste0("output/", now, "/occurrence/phy0"))){
+        dir.create(paste0("output/", now, "/occurrence/phy0"))
     }
     
     for(i in 1:length(phy$tip.label)){
     
     raster::writeRaster(occurrence[[i]],
-                        paste0("output/simulations/", now, "/occurrence/phy0/",
+                        paste0("output/", now, "/occurrence/phy0/",
                               "occurrence_phy0-", phy$tip.label[i], "_", now),
                         format = "GTiff")
     }
@@ -241,10 +237,8 @@ if(exists("phy_lst")){
     
     for(i in 1:length(phy_lst)){
         
-        if(!dir.exists(paste0("output/simulations/", now,
-                              "/occurrence/phy", i))){
-            dir.create(paste0("output/simulations/", now,
-                              "/occurrence/phy", i))
+        if(!dir.exists(paste0("output/", now, "/occurrence/phy", i))){
+            dir.create(paste0("output/", now, "/occurrence/phy", i))
         }
     }
     
@@ -253,10 +247,9 @@ if(exists("phy_lst")){
         for(j in 1:length(phy_lst[[i]]$tip.label)){
             
             raster::writeRaster(occurrence[[i]][[j]],
-                                paste0("output/simulations/", now,
-                                       "/occurrence/phy", i, "/occurrence_phy",
-                                       i, "-", phy_lst[[i]]$tip.label[j], "_",
-                                       now),
+                                paste0("output/", now, "/occurrence/phy", i,
+                                       "/occurrence_phy", i, "-",
+                                       phy_lst[[i]]$tip.label[j], "_", now),
                                 format = "GTiff")
         }
     }

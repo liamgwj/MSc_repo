@@ -1,6 +1,4 @@
-# LJ started: 2021-06-28 last updated: 2021-10-04
-
-## SUPPORT FOR CONTINUOUS CHARACTERS NOT COMPLETE ##
+# LJ started: 2021-06-28 last updated: 2021-10-10 ## SUPPORT FOR CONTINUOUS CHARACTERS NOT COMPLETE ##
 
 # This is the central simulation script - here, we will set the parameters for
 # the simulation run, then source the additional scripts (01-03) that carry out
@@ -26,7 +24,7 @@ params <- data.frame(
                 "ID" = now,
                 
                 # phylogeny (01) ----------------------------------------------
-                "nTips" = 16, # number of extant taxa per phylogeny
+                "nTips" = 30, # number of extant taxa per phylogeny
                 "nPhy" = 1, # number of phylogenies to simulate
                 "lambda" = 0.2, # speciation rate
                 "mu" = 0.1, # extinction rate
@@ -48,8 +46,8 @@ params <- data.frame(
                 "theta" = 0,
                 
                 # geographic distributions (03) -------------------------------
-                "land_dim_x" = 1000, # dimensions of simulated landscape
-                "land_dim_y" = 1000,
+                "land_dim_x" = 500, # dimensions of simulated landscape
+                "land_dim_y" = 500,
                 "min_nPatch" = 1, # number of habitat patches per taxon
                 "max_nPatch" = 5,
                 "min_patchSize" = 1000, # size of habitat patches
@@ -66,19 +64,15 @@ if(!dir.exists("output")){
     dir.create("output")
 }
 
-if(!dir.exists("output/simulations")){
-    dir.create("output/simulations")
-}
-
-if(!dir.exists(paste0("output/simulations/", now))){
-    dir.create(paste0("output/simulations/", now))
+if(!dir.exists("output/", now)){
+    dir.create("output/", now)
 }
 
 
 # write parameters to file ----------------------------------------------------
 
 write.csv(params,
-          paste0("output/simulations/", now, "/",
+          paste0("output/", now, "/",
                  "parameters_", now, ".csv"),
           row.names = FALSE)
 

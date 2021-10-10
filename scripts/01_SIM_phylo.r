@@ -1,4 +1,4 @@
-# LJ started: 2021-06-25 last updated: 2021-09-24
+# LJ started: 2021-06-25 last updated: 2021-10-10
 
 # Simulate phylogenies according to the specified parameters
 
@@ -23,12 +23,8 @@ if(!dir.exists("output")){
     dir.create("output")
 }
 
-if(!dir.exists("output/simulations")){
-    dir.create("output/simulations")
-}
-
-if(!dir.exists(paste0("output/simulations/", now))){
-    dir.create(paste0("output/simulations/", now))
+if(!dir.exists("output/", now)){
+    dir.create("output/", now)
 }
 
 
@@ -38,7 +34,7 @@ if(!dir.exists(paste0("output/simulations/", now))){
 for(i in 1:length(phy_all)){
     
     ape::write.tree(phy_all[[i]],
-                    paste0("output/simulations/", now, "/",
+                    paste0("output/", now, "/",
                            "phylogenies_", now, ".nwk"),
                     append = TRUE)
 }

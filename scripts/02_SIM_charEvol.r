@@ -1,4 +1,4 @@
-# LJ started: 2021-06-25 last updated: 2021-09-24
+# LJ started: 2021-06-25 last updated: 2021-10-10
 
 # Simulate evolution of either a discrete binary character or a continuous
 # character on a set of provided phylogenies, then sample a subset of this
@@ -11,7 +11,7 @@
 
 # read in phylogeny/ies -------------------------------------------------------
 
-phy_tmp <- ape::read.tree(paste0("output/simulations/", now, "/",
+phy_tmp <- ape::read.tree(paste0("output/", now, "/",
                                  "phylogenies_", now, ".nwk"))
 
 
@@ -188,28 +188,20 @@ if(!dir.exists("output")){
     dir.create("output")
 }
 
-if(!dir.exists("output/simulations")){
-    dir.create("output/simulations")
+if(!dir.exists("output/", now)){
+    dir.create("output/", now)
 }
 
-if(!dir.exists(paste0("output/simulations/", now))){
-    dir.create(paste0("output/simulations/", now))
+if(!dir.exists(paste0("output/", now, "/character-states"))){
+    dir.create(paste0("output/", now, "/character-states"))
 }
 
-if(!dir.exists(paste0("output/simulations/", now, "/character-states"))){
-    dir.create(paste0("output/simulations/", now, "/character-states"))
+if(!dir.exists(paste0("output/", now, "/character-states/complete"))){
+    dir.create(paste0("output/", now, "/character-states/complete"))
 }
 
-if(!dir.exists(paste0("output/simulations/", now,
-                      "/character-states/complete"))){
-    dir.create(paste0("output/simulations/", now,
-                      "/character-states/complete"))
-}
-
-if(!dir.exists(paste0("output/simulations/", now,
-                      "/character-states/known"))){
-    dir.create(paste0("output/simulations/", now,
-                      "/character-states/known"))
+if(!dir.exists(paste0("output/", now, "/character-states/known"))){
+    dir.create(paste0("output/", now, "/character-states/known"))
 }
 
 
@@ -220,13 +212,11 @@ if(!dir.exists(paste0("output/simulations/", now,
 if(exists("phy")){
     
     write.csv(char_complete,
-              paste0("output/simulations/", now,
-                     "/character-states/complete/",
+              paste0("output/", now, "character-states/complete/",
                      "charComplete_phy0_", now, ".csv"))
     
     write.csv(char_known,
-              paste0("output/simulations/", now,
-                     "/character-states/known/",
+              paste0("output/", now, "/character-states/known/",
                      "charKnown_phy0_", now, ".csv"))
 }
 
@@ -238,13 +228,11 @@ if(exists("phy_lst")){
     for(i in 1:length(phy_lst)){
     
         write.csv(data.frame(hostStatus = char_lst_complete[[i]]),
-                  paste0("output/simulations/", now,
-                         "/character-states/complete/",
+                  paste0("output/", now, "/character-states/complete/",
                          "charComplete_", "phy", i, "_", now, ".csv"))
     
         write.csv(data.frame(hostStatus = char_lst_known[[i]]),
-                  paste0("output/simulations/", now,
-                         "/character-states/known/",
+                  paste0("output/", now, "/character-states/known/",
                          "charKnown_", "phy", i, "_", now, ".csv"))
     }
 }
