@@ -212,7 +212,7 @@ if(!dir.exists(paste0("output/", now, "/character-states/known"))){
 if(exists("phy")){
     
     write.csv(char_complete,
-              paste0("output/", now, "character-states/complete/",
+              paste0("output/", now, "/character-states/complete/",
                      "charComplete_phy0_", now, ".csv"))
     
     write.csv(char_known,
