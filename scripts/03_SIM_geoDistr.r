@@ -30,7 +30,7 @@ if(class(phy_tmp) == "phylo"){
 
 # create empty raster with specified dimensions -------------------------------
 
-empty_raster <- raster::raster(matrix(1, params$land_dim_x,
+empty_raster <- raster::raster(matrix(0, params$land_dim_x,
                                       params$land_dim_y),
                                xmn = 0, xmx = 10,
                                ymn = 0, ymx = 10)
@@ -108,7 +108,7 @@ if(exists("phy")){
                                                  npatch = np,
                                                  size = sz,
                                                  pts = seed_loc_subset,
-                                                 bgr = 1,
+                                                 bgr = 0,
                                                  val = density_tmp)
     }
 }
@@ -189,7 +189,7 @@ if(exists("phy_lst")){
                                                           npatch = np,
                                                           size = sz,
                                                          pts = seed_loc_subset,
-                                                          bgr = 1,
+                                                          bgr = 0,
                                                           val = density_tmp)
         }
     }
@@ -226,7 +226,7 @@ if(exists("phy")){
     raster::writeRaster(occurrence[[i]],
                         paste0("output/", now, "/occurrence/phy0/",
                               "occurrence_phy0-", phy$tip.label[i], "_", now),
-                        format = "GTiff")
+                        format = "ascii")
     }
 }
 
@@ -250,7 +250,7 @@ if(exists("phy_lst")){
                                 paste0("output/", now, "/occurrence/phy", i,
                                        "/occurrence_phy", i, "-",
                                        phy_lst[[i]]$tip.label[j], "_", now),
-                                format = "GTiff")
+                                format = "ascii")
         }
     }
 }

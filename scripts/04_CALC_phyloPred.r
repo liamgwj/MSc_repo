@@ -1,20 +1,20 @@
-# LJ 2021-06-25
+# LJ started: 2021-06-25 last updated: 2021-10-10
 
-# Use phylogeny/ancestral state reconstruction to predict character states of taxa with unknown host status.
+# Use phylogeny/ancestral state reconstruction to predict character states of
+# taxa with unknown host status.
 
-# requires package 'picante'
+## LOOPING STRUCTURE NOT COMPLETE
 
+# requires object 'now' (unique date/time ID)
 
-# load simulated data ----------------------------------------------------
-
-# choose simulation ID
-
-# now <- "2021-06-30_11:22:13"
+# requires package 'picante' to be installed
 
 
-# read in all phylogenies associated with chosen ID
+# load simulated data ---------------------------------------------------------
 
-phy_lst <- ape::read.tree(paste0("output/sim_phylogenies/", now, ".nwk"))
+# read in all phylogenies associated with current ID
+
+phy_lst <- ape::read.tree(paste0("output/", now, "/phylogenies_", now, ".nwk"))
 
 # select one phylogeny to use for this round of ancestral state reconstruction
 
@@ -25,8 +25,8 @@ phy <- phy_lst[[j]]
 
 # read in incomplete character state data corresponding to the selected phylogeny
 
-char_known <- read.csv(paste0("output/sim_hostStatus/", now, "/known",
-                              "/phy", j, "_charKnown.csv"),
+char_known <- read.csv(paste0("output/", now, "/character-states/known/",
+                              "charKnown_", "phy", j, "_", now, ".csv"),
                        row.names = 1)
 
 
@@ -55,14 +55,27 @@ for(i in 1:nrow(char_all)){
     }}
 
 
-# write to file
+# check for output directories, creating them if necessary --------------------
 
-if(!dir.exists("output/CALC_charStates")){
-    dir.create("output/CALC_charStates")
+if(!dir.exists("output")){
+    dir.create("output")
 }
 
-dir.create(paste0("output/CALC_charStates/", now))
+if(!dir.exists(paste0("output/", now))){
+    dir.create(paste0("output/", now))
+}
+
+if(!dir.exists(paste0("output/", now, "/character-states"))){
+    dir.create(paste0("output/", now, "/character-states"))
+}
+
+if(!dir.exists(paste0("output/", now, "/character-states/predicted"))){
+    dir.create(paste0("output/", now, "/character-states/predicted"))
+}
+
+
+# write to file
 
 write.csv(char_all,
-          paste0("output/CALC_charStates/", now,
-                 "/phy", j, "_charEst.csv"))
+          paste0("output/", now, "/character-states/predicted",
+                 "charPredicted_", "phy", j, "_", now, ".csv"))

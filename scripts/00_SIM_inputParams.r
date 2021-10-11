@@ -25,7 +25,7 @@ params <- data.frame(
                 
                 # phylogeny (01) ----------------------------------------------
                 "nTips" = 30, # number of extant taxa per phylogeny
-                "nPhy" = 3, # number of phylogenies to simulate
+                "nPhy" = 1, # number of phylogenies to simulate
                 "lambda" = 0.2, # speciation rate
                 "mu" = 0.1, # extinction rate
                 
