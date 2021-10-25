@@ -32,8 +32,8 @@ if(class(phy_tmp) == "phylo"){
 
 empty_raster <- raster::raster(matrix(0, params$land_dim_x,
                                       params$land_dim_y),
-                               xmn = 0, xmx = 10,
-                               ymn = 0, ymx = 10)
+                               xmn = 0, xmx = params$land_dim_x,
+                               ymn = 0, ymx = params$land_dim_y)
 
 
 # single phylogeny ------------------------------------------------------------
@@ -46,7 +46,6 @@ if(exists("phy")){
     
     names(occurrence) <- phy$tip.label
     
-    
     # simulate geographic distributions for each tip---------------------------
     
     # set seed locations for habitat patches - total of (max no. patches per
@@ -54,11 +53,12 @@ if(exists("phy")){
     # dispersed if desired
     
     # gridded locations
-    seed_locations <- seq(from = 1,
+    
+    seed_locations <- round(seq(from = 1,
                           to = length(empty_raster[]),
-                          by = length(empty_raster[])/(params$max_nPatch *
+                          length.out = (params$max_nPatch *
                                                         length(phy$tip.label))
-                              )
+                              ), 0)
     
     # random locations
     #seed_locations <- sample(1:length(empty_raster[]),
@@ -99,7 +99,8 @@ if(exists("phy")){
         
         # set species-specific density value
         
-        density_tmp <- sample(c(2:8), 1)
+        density_tmp <- sample(c(params$hostQuality_min:params$hostQuality_max),
+                              1)
         
         
         # assign presence/absence
@@ -226,7 +227,8 @@ if(exists("phy")){
     raster::writeRaster(occurrence[[i]],
                         paste0("output/", now, "/occurrence/phy0/",
                               "occurrence_phy0-", phy$tip.label[i], "_", now),
-                        format = "ascii")
+                        format = "ascii",
+                        overwrite = TRUE)
     }
 }
 

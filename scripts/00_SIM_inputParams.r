@@ -1,5 +1,11 @@
 # LJ started: 2021-06-28 last updated: 2021-10-10 ## SUPPORT FOR CONTINUOUS CHARACTERS NOT COMPLETE ##
 
+### ToDo:
+# looop thru:
+# - dispersal distances (5,10,15?)
+# - number of hosts  - keep patch size constant for now
+# - host qualities?
+
 # This is the central simulation script - here, we will set the parameters for
 # the simulation run, then source the additional scripts (01-03) that carry out
 # the simulations.
@@ -12,10 +18,6 @@
 
 
 # set parameters --------------------------------------------------------------
-
-# generate unique date/time ID for this run
-
-now <- gsub(" ", "T", Sys.time())
 
 
 # set input parameters
@@ -46,15 +48,17 @@ params <- data.frame(
                 "theta" = 0,
                 
                 # geographic distributions (03) -------------------------------
-                "land_dim_x" = 500, # dimensions of simulated landscape
-                "land_dim_y" = 500,
+                "land_dim_x" = 100, # dimensions of simulated landscape
+                "land_dim_y" = 100,
                 "min_nPatch" = 1, # number of habitat patches per taxon
-                "max_nPatch" = 5,
-                "min_patchSize" = 1000, # size of habitat patches
-                "max_patchSize" = 1000,
-                "cooccurrence_pat" = "random"#, # co-occurrence pattern across
+                "max_nPatch" = 1,
+                "min_patchSize" = 10, # size of habitat patches
+                "max_patchSize" = 100,
+                "cooccurrence_pat" = "clustered", # co-occurrence pattern across
                 # taxa - one of "clustered", "random" or "dispersed"
-                #"density" = c(2:8) add functionality - what levels of density are interesting?
+                "hostQuality_min" = 1,
+                "hostQuality_max" = 9,
+                "dispMax" = disp_level
  )
 
 
@@ -73,15 +77,5 @@ if(!dir.exists(paste0("output/", now))){
 
 write.csv(params,
           paste0("output/", now, "/",
-                 "parameters_", now, ".csv"),
+                 "parameters_", now, "_d", disp_level, ".csv"),
           row.names = FALSE)
-
-
-# source simulation scripts ---------------------------------------------------
-
-source("scripts/01_SIM_phylo.r")
-
-source("scripts/02_SIM_charEvol.r")
-
-source("scripts/03_SIM_geoDistr.r")
-
