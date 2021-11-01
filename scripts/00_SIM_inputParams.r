@@ -51,10 +51,10 @@ params <- data.frame(
                 "land_dim_x" = 100, # dimensions of simulated landscape
                 "land_dim_y" = 100,
                 "min_nPatch" = 1, # number of habitat patches per taxon
-                "max_nPatch" = 1,
+                "max_nPatch" = 10,
                 "min_patchSize" = 10, # size of habitat patches
                 "max_patchSize" = 100,
-                "cooccurrence_pat" = "clustered", # co-occurrence pattern across
+                "cooccurrence_pat" = "random", # co-occurrence pattern across
                 # taxa - one of "clustered", "random" or "dispersed"
                 "hostQuality_min" = 1,
                 "hostQuality_max" = 9,
